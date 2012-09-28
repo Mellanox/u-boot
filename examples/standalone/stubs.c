@@ -195,6 +195,34 @@ gd_t *global_data;
 "	l.jr	r13\n"		\
 "	l.nop\n"				\
 	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "r13");
+#elif defined(CONFIG_ARC)
+/*
+ * arc does not have a dedicated register to store the pointer to
+ * the global_data. Thus the jump table address is stored in a
+ * global variable, but such approach does not allow for execution
+ * from flash memory. The global_data address is passed as argv[-1]
+ * to the application program.
+ */
+static void **jt;
+gd_t *global_data;
+
+#define EXPORT_FUNC(x) \
+	asm volatile( \
+"	.globl " #x "\n" \
+#x ":\n" \
+"	push_s  %%blink\n" \
+"	sub_s   %%sp, %%sp, 12\n" \
+"	mov	%%r10, %0\n" \
+"	mov	%%r11, jt\n" \
+"	ld	%%r11, [%%r11]\n" \
+"	ld	%%r11, [%%r11, %%r10]\n" \
+"	jl	[%%r11]\n" \
+"	ld.aw  %%blink, [%%sp,12]\n" \
+"	j_s.d  [%%blink]\n" \
+"	add_s  %%sp, %%sp, 4\n" \
+"	nop\n" \
+"	nop\n" \
+	: : "i"(XF_ ## x * sizeof(void *)) : "r10", "r11", "sp", "blink");
 #else
 /*"	addi	$sp, $sp, -24\n"	\
 "	br	$r16\n"			\*/
