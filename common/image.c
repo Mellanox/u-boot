@@ -77,6 +77,7 @@ static const image_header_t *image_get_ramdisk(ulong rd_addr, uint8_t arch,
 static const table_entry_t uimage_arch[] = {
 	{	IH_ARCH_INVALID,	NULL,		"Invalid ARCH",	},
 	{	IH_ARCH_ALPHA,		"alpha",	"Alpha",	},
+	{	IH_ARCH_ARC,		"arc",		"ARC",		},
 	{	IH_ARCH_ARM,		"arm",		"ARM",		},
 	{	IH_ARCH_I386,		"x86",		"Intel x86",	},
 	{	IH_ARCH_IA64,		"ia64",		"IA64",		},
