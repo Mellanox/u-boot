@@ -92,7 +92,7 @@
 #undef CONFIG_CMD_SETGETDCR /* DCR support on 4xx */
 #define CONFIG_CMD_SOURCE   /* "source" command support */
 #undef CONFIG_CMD_XIMG      /* Load part of Multi Image */
-#define CONFIG_CMD_KGDB
+#undef CONFIG_CMD_KGDB      /* KGDB support */
 
 #define MTDIDS_DEFAULT    "nand0=nand"
 #define MTDPARTS_DEFAULT  "mtdparts=nand:512k(x-loader), "\
