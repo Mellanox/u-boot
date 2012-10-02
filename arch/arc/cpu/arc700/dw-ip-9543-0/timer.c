@@ -68,10 +68,12 @@ void __udelay(unsigned long usec)
 	ulong tmp, tmp2, tmp3, start, time;
 
 	uTicks = (gd->cpu_clk / 1000000) * usec;
+
 	tmp2 = get_timer(0);
 	tmp3 = get_timer(0);
 
 	start = get_timer(0);
+
 	time  = 0;
 
 	/*

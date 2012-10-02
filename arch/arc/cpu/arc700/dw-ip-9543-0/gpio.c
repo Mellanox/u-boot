@@ -129,6 +129,7 @@ int gpio_direction_output(unsigned gpio, int value)
 {
 	gpio_bank_t bank = (gpio_bank_t)(gpio >> 16);
 	int bit = gpio & 0xFFFF;
+
 	set_gpio_val(bank, bit, value ? 1 : 0);
 	set_gpio_mode(bank, bit, GPIO_OUTPUT_MODE);
 	printf("set gpio%d.%d output\n", bank, bit);
@@ -140,6 +141,7 @@ void gpio_set_value(unsigned gpio, int value)
 {
 	gpio_bank_t bank = (gpio_bank_t)(gpio >> 16);
 	int bit = gpio & 0xFFFF;
+
 	set_gpio_val(bank, bit, value ? 1 : 0);
 }
 
