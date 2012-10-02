@@ -48,8 +48,6 @@ int  set_mio_mux(unsigned mux_index, unsigned mux_mask)
 	return -1;
 }
 
-
-
 /*
  * call it before pinmux init;
  * call it before soft reset;
