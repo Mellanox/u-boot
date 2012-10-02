@@ -11,7 +11,7 @@
 #define _ASM_CACHE_H
 
 #include <asm/system.h>
-#include <arcregs.h>
+#include <asm/arcregs.h>
 
 void flush_cache(unsigned long dummy1, unsigned long dummy2);
 
