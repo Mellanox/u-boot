@@ -10,7 +10,7 @@ include $(TOPDIR)/config.mk
 
 LIB	=  $(obj)lib$(SOC).o
 
-COBJS	+=  soc.o timer.o clock.o pinmux.o gpio.o
+COBJS	+=  soc.o timer.o clock.o clk_set.o pinmux.o gpio.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS) $(SOBJS) $(COBJS-y))
