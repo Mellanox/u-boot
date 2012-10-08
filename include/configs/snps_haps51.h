@@ -124,10 +124,10 @@
 	"nandboot=echo Booting from nand ...; " \
 	"run nandargs; " \
 	"onenand read ${loadaddr} 280000 400000; " \
-	"bootm ${loadaddr}\0" \
-	"boardname=p83_a3\0" \
-	"chipname=av800c\0" \
-	"machid=0x7b0033\0" \
+	"bootcmd=bootm ${loadaddr}\0" \
+	"boardname=snps-haps51\0" \
+	"chipname=dw-ip-9543-0\0" \
+	"machid=0x34\0" \
 	"bootargs=root=254:2 rw init=/init console=ttyS0,115200 rootfstype=ext3\0"
 
 #define CONFIG_BOOTCOMMAND \
@@ -181,15 +181,15 @@
  * FLASH and environment organization
  */
 #ifndef CONFIG_SYS_NO_FLASH
-# define CONFIG_SYS_MAX_FLASH_BANKS 1
-# define CONFIG_SYS_MAX_FLASH_SECT  1024
+#define CONFIG_SYS_MAX_FLASH_BANKS 1
+#define CONFIG_SYS_MAX_FLASH_SECT  1024
 
 /*
  * Flash memory is CFI compliant
  */
-# define CONFIG_SYS_FLASH_CFI    1
-# define CONFIG_FLASH_CFI_DRIVER 1 /* Use drivers/cfi_flash.c */
-# define CONFIG_FLASH_CFI_MTD    1 /* Use drivers/cfi_mtd.c */
+#define CONFIG_SYS_FLASH_CFI    1
+#define CONFIG_FLASH_CFI_DRIVER 1 /* Use drivers/cfi_flash.c */
+#define CONFIG_FLASH_CFI_MTD    1 /* Use drivers/cfi_mtd.c */
 
 #define CONFIG_SYS_FLASH_PROTECTION 1 /* Use h/w sector protection*/
 #define CONFIG_SYS_MONITOR_LEN      (0x60000) /* Reserve 2 sectors */
@@ -229,7 +229,7 @@
 
 #ifndef __ASSEMBLY__
 extern unsigned int boot_flash_base;
-extern unsigned int boot_flash_env_addr;
+extern volatile unsigned int boot_flash_env_addr;
 extern unsigned int boot_flash_off;
 extern unsigned int boot_flash_sec;
 extern unsigned int boot_flash_type;
