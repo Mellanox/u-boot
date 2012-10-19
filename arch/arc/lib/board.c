@@ -256,10 +256,10 @@ void start_arcboot(void)
 	printf("Dcache status %d\n", dcache_status());
 	printf("Icache status %d\n", icache_status());
 
-#ifdef CONFIG_A3_DISPLAY
+#ifdef CONFIG_HAPS51_DISPLAY
 	osd_display();
 #endif
-#ifdef CONFIG_A3_I2C
+#ifdef CONFIG_HAPS51_I2C
 		disable_i2c_pinmux();
 #endif
 	for (;;)
