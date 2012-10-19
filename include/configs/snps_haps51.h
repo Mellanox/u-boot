@@ -68,7 +68,6 @@
 
 #undef CONFIG_CMD_NET
 #undef CONFIG_CMD_NFS
-#undef CONFIG_CMD_FPGA      /* FPGA configuration Support */
 #define CONFIG_CMD_BDI      /* bdinfo */
 #define CONFIG_CMD_BOOTD    /* bootd */
 #define CONFIG_CMD_CONSOLE  /* coninfo */
@@ -106,20 +105,11 @@
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"loadaddr=0x82000000\0" \
-	"usbtty=cdc_acm\0" \
 	"console=ttyS1,115200n8\0" \
-	"mmcargs=setenv bootargs console=${console} " \
-	"root=/dev/cardblksd2 rw " \
 	"rootfstype=ext3 rootwait\0" \
 	"nandargs=setenv bootargs console=${console} " \
-	"root=/dev/mtdblock4 rw " \
 	"rootfstype=yaffs2\0" \
-	"loadbootscript=fatload mmc 0 ${loadaddr} boot.scr\0" \
-	"bootscript=echo Running bootscript from mmc ...; " \
 	"source ${loadaddr}\0" \
-	"loaduimage=fatload mmc 0 ${loadaddr} uImage\0" \
-	"mmcboot=echo Booting from mmc ...; " \
-	"run mmcargs; " \
 	"bootm ${loadaddr}\0" \
 	"nandboot=echo Booting from nand ...; " \
 	"run nandargs; " \
@@ -132,7 +122,6 @@
 
 #define CONFIG_BOOTCOMMAND \
 	"version"
-/*"mmcinfo; fatls mmc 0:1; fatload mmc 0:1 82000000 uImage; bootm 82000000" \*/
 
 #define CONFIG_AUTO_COMPLETE 1
 
@@ -235,34 +224,5 @@ extern unsigned int boot_flash_sec;
 extern unsigned int boot_flash_type;
 #endif /* __ASSEMBLY__ */
 #endif /* CONFIG_SYS_NO_FLASH */
-
-/*-----------------------------------------------------------------------
- * Other driver setup
- */
-#undef CONFIG_CALXEDA_XGMAC /* STMMAC ethernet driver ? */
-
-/*----------------------------------------------------------------------------
- * ... Ethernet from ... family
- *----------------------------------------------------------------------------
- */
-#if defined(CONFIG_CMD_NET)
-#define CONFIG_RESET_PHY_R 1
-#define CONFIG_HOSTNAME    haps51_fd
-#define CONFIG_ETHADDR     00 : 01 : 02 : 65 : 04 : 75 /* Ethernet address */
-#define CONFIG_IPADDR      10.100.24.197     /* Our ip address */
-#define CONFIG_GATEWAYIP   10.100.24.1       /* Our getway ip address */
-#define CONFIG_SERVERIP    10.100.24.228     /* Tftp server ip address */
-#define CONFIG_NETMASK     255.255.255.0
-#endif /* (CONFIG_CMD_NET) */
-
-/*
- * BOOTP fields
- */
-#if defined(CONFIG_CMD_NET)
-#define CONFIG_BOOTP_SUBNETMASK 0x00000001
-#define CONFIG_BOOTP_GATEWAY    0x00000002
-#define CONFIG_BOOTP_HOSTNAME   0x00000004
-#define CONFIG_BOOTP_BOOTPATH   0x00000010
-#endif /* (CONFIG_CMD_NET) */
 
 #endif /* __CONFIG_H */

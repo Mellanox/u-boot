@@ -10,7 +10,6 @@
 #include <common.h>
 #include <asm/arch/memory.h>
 #include <asm/arch/pinmux.h>
-#include <asm/arch/eth_reg.h>
 #include <asm/arch/nand.h>
 #include <stdio_dev.h>
 
@@ -35,100 +34,9 @@ int board_init(void)
 
 /*
  * Routine: misc_init_r
- * Description: Init ethernet (done here so udelay works)
+ * Description: Final stage, so udelay works
  */
 int misc_init_r(void)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-
-	return 0;
-}
-
-/*
- * Routine: set_muxconf_regs
- * Description: Setting up the configuration Mux registers specific to
- *              the hardware. Many pins need to be moved from protect to
- *              primary mode.
- */
-void set_muxconf_regs(void)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-}
-
-/*
- * Routine: setup_net_chip
- * Description: Setting up the configuration GPMC registers specific to the
- *				Ethernet hardware.
- */
-static void setup_net_chip(void)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-}
-
-int board_eth_init(bd_t *bis)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-
-	return 0;
-}
-
-u32 get_board_rev(void)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-
-	return 0x20;
-}
-
-static int  sdio_init(unsigned port)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-
-	return 0;
-}
-
-int  sdio_detect(unsigned port)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-}
-
-static void sdio_pwr_prepare(unsigned port)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-}
-
-static void board_mmc_register(unsigned port)
-{
-	/*
-	 * @todo implement this function
-	 */
-	printf(" @TODO: [%s]:%s()\n", __FILE__, __func__);
-}
-
-int board_mmc_init(bd_t	*bis)
 {
 	/*
 	 * @todo implement this function
