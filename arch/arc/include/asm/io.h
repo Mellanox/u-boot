@@ -8,6 +8,7 @@
  */
 
 #include <linux/types.h>
+#include <asm/byteorder.h>
 
 #ifndef _ASM_ARC_IO_H
 #define _ASM_ARC_IO_H
