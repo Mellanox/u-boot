@@ -142,7 +142,7 @@ void do_bootm_linux(int flag, int argc, char *argv[],
 
 	/* cleanup_before_linux (); */
 
-	theKernel(0, machid, bd->bi_boot_params);
+	theKernel(1, machid, commandline);
 
 	/* does not return */
 	return;
