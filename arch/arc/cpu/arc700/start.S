@@ -15,13 +15,20 @@
 	.align 4
 	.globl _start
 
+	/* pre boot header */
+__start:
+	.word .
+	.word _end
+	.word 0
+	.word _start
+
 _start:
 	/* Disable interrupts */
 
 	flag 0
 	/* Whether I am running in CONFIG_SYS_TEXT_BASE */
 	lr			r0,[ARC_REG_PC]
-	sub			r0,r0,. - _start
+	sub			r0,r0,. - __start
 	mov 		r1,CONFIG_SYS_TEXT_BASE
 	cmp			r0,r1
 	bz			relocate_end
