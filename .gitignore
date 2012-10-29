@@ -16,6 +16,7 @@
 *.patch
 *.bin
 .nfs0000*
+.stamp_*
 
 #
 # Top-level generic files
