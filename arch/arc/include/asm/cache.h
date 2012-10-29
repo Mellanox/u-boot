@@ -13,6 +13,8 @@
 #include <asm/system.h>
 #include <asm/arcregs.h>
 
+#define ARCH_DMA_MINALIGN  64
+
 void flush_cache(unsigned long dummy1, unsigned long dummy2);
 
 void dcache_enable(void);
