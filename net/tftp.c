@@ -587,7 +587,7 @@ TftpHandler(uchar *pkt, unsigned dest, IPaddr_t sip, unsigned src,
 
 		TftpLastBlock = TftpBlock;
 		TftpTimeoutCountMax = TIMEOUT_COUNT;
-		NetSetTimeout(TftpTimeoutMSecs, TftpTimeout);
+		NetSetTimeout(TftpTimeoutMSecs * (CONFIG_SYS_HZ / 1000), TftpTimeout);
 
 		store_block(TftpBlock - 1, pkt + 2, len);
 
@@ -671,7 +671,7 @@ TftpTimeout(void)
 		restart("Retry count exceeded");
 	} else {
 		puts("T ");
-		NetSetTimeout(TftpTimeoutMSecs, TftpTimeout);
+		NetSetTimeout(TftpTimeoutMSecs * (CONFIG_SYS_HZ / 1000), TftpTimeout);
 		if (TftpState != STATE_RECV_WRQ)
 			TftpSend();
 	}
@@ -777,7 +777,7 @@ void TftpStart(enum proto_t protocol)
 
 	TftpTimeoutCountMax = TftpRRQTimeoutCountMax;
 
-	NetSetTimeout(TftpTimeoutMSecs, TftpTimeout);
+	NetSetTimeout(TftpTimeoutMSecs * (CONFIG_SYS_HZ / 1000), TftpTimeout);
 	net_set_udp_handler(TftpHandler);
 #ifdef CONFIG_CMD_TFTPPUT
 	net_set_icmp_handler(icmp_handler);

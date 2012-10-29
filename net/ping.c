@@ -73,7 +73,7 @@ static void ping_timeout(void)
 void ping_start(void)
 {
 	printf("Using %s device\n", eth_get_name());
-	NetSetTimeout(10000UL, ping_timeout);
+	NetSetTimeout(10000UL * (CONFIG_SYS_HZ / 1000), ping_timeout);
 
 	ping_send();
 }

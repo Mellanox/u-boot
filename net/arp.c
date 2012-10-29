@@ -105,7 +105,7 @@ void ArpTimeoutCheck(void)
 	t = get_timer(0);
 
 	/* check for arp timeout */
-	if ((t - NetArpWaitTimerStart) > ARP_TIMEOUT) {
+	if ((t - NetArpWaitTimerStart) > ARP_TIMEOUT * (CONFIG_SYS_HZ / 1000)) {
 		NetArpWaitTry++;
 
 		if (NetArpWaitTry >= ARP_TIMEOUT_COUNT) {
