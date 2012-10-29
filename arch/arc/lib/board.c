@@ -248,8 +248,10 @@ void start_arcboot(void)
 	puts("KGDB:  ");
 	kgdb_init();
 #endif
+#if defined(CONFIG_USE_IRQ)
 	/* enable exceptions */
 	enable_interrupts();
+#endif
 
 	icache_enable();
 	dcache_enable();
