@@ -1,0 +1,8 @@
+- BOARD
+M:	Roy Vardi <royv@ezchip.com>
+S:	Maintained
+F:	board/ezchip/nps/
+F:	include/configs/nps400.h
+F:	include/configs/nps-miniHE.h
+F:	configs/nps400_defconfig
+F:	configs/nps-miniHE_defconfig

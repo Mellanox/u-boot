@@ -1,0 +1,19 @@
+config SYS_BOARD
+        default "nps"
+
+config SYS_VENDOR
+	default "ezchip"
+
+if TARGET_NPS400
+
+config SYS_CONFIG_NAME
+	default "nps400"
+
+endif
+
+if TARGET_NPS_MINIHE
+
+config SYS_CONFIG_NAME
+	default "nps-miniHE"
+	
+endif

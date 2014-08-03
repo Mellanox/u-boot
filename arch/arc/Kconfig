@@ -128,11 +128,18 @@ config TARGET_NSIM
 
 config TARGET_AXS10X
 	bool "Support Synopsys Designware SDP board (AXS101 & AXS103)"
+	
+config TARGET_NPS400
+	bool "Support nps400"
+	
+config TARGET_NPS_MINIHE
+	bool "Support nps-miniHE"
 
 endchoice
 
 source "board/abilis/tb100/Kconfig"
 source "board/synopsys/Kconfig"
 source "board/synopsys/axs10x/Kconfig"
+source "board/ezchip/nps/Kconfig"
 
 endmenu
