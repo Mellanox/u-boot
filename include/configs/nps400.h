@@ -54,6 +54,7 @@
 
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_RUN		/* run command in env variable */
+#define CONFIG_CMD_SF
 #define CONFIG_CMD_NET		/* bootp, tftpboot, rarpboot */
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_MAXARGS	16
@@ -85,6 +86,16 @@
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
 								sizeof(CONFIG_SYS_PROMPT) + 16)
+/*
+ * FLASH
+ */
+#define CONFIG_SPI_FLASH
+#define CONFIG_SPI_FLASH_SPANSION
+#define CONFIG_SF_DEFAULT_SPEED		128500
+#define CONFIG_ENV_SPI_MAX_HZ		128500
+#define CONFIG_NPS_SPI
+#define CONFIG_NPS_SPI_BASE		0xF7208C00
+
 /*
  * NET
  */

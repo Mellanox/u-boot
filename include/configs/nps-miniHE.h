@@ -56,6 +56,7 @@
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_SAVEENV
 #define CONFIG_CMD_RUN      /* run command in env variable */
+#define CONFIG_CMD_SF
 #define CONFIG_CMD_NET      /* bootp, tftpboot, rarpboot */
 
 #define CONFIG_AUTO_COMPLETE
@@ -64,10 +65,10 @@
 /*
  * Environment settings
  */
-#define CONFIG_ENV_IS_NOWHERE
-#define CONFIG_ENV_SIZE                 0x8000
-#define CONFIG_ENV_OFFSET               0x580000
-#define CONFIG_ENV_SECT_SIZE    0x40000
+#define CONFIG_ENV_IS_IN_SPI_FLASH
+#define CONFIG_ENV_SIZE			0x8000
+#define CONFIG_ENV_OFFSET		0x580000
+#define CONFIG_ENV_SECT_SIZE	0x40000
 #define CONFIG_ENV_OVERWRITE 1
 
 /*
@@ -88,6 +89,18 @@
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
 						sizeof(CONFIG_SYS_PROMPT) + 16)
+
+/*
+ * FLASH
+ */
+#define CONFIG_NPS_SPI
+#define CONFIG_SPI_FLASH
+#define CONFIG_SPI_FLASH_SPANSION
+#define CONFIG_SF_DEFAULT_SPEED		(CONFIG_SYS_CLK_FREQ / 2)
+#define CONFIG_NPS_SPI
+#define CONFIG_NPS_SPI_BASE			0xC0001000
+#define NPS_SPI_RSVD_2_ADDRESS		(volatile int *)(0xC0002040)
+
 /*
  * NET
  */
