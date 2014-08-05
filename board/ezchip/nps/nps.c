@@ -43,6 +43,9 @@ int board_eth_init(bd_t *bd)
 #ifdef CONFIG_NPS_ETH
 	rc += nps_eth_initialize();
 #endif
+#ifdef CONFIG_NPS_MINI_HE
+	rc += nps_miniHE_eth_initialize();
+#endif
 	return rc;
 }
 #endif

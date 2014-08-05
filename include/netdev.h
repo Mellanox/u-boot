@@ -66,6 +66,8 @@ int mvneta_initialize(bd_t *bis, int base_addr, int devnum, int phy_addr);
 int natsemi_initialize(bd_t *bis);
 int ne2k_register(void);
 int npe_initialize(bd_t *bis);
+int nps_eth_initialize(void);
+int nps_miniHE_eth_initialize(void);
 int ns8382x_initialize(bd_t *bis);
 int pcnet_initialize(bd_t *bis);
 int ppc_4xx_eth_initialize (bd_t *bis);

@@ -104,6 +104,8 @@
 /*
  * NET
  */
+#define CONFIG_NPS_MINIHE_ETH
+
 #define CONFIG_ETHADDR       00:C0:00:99:AA:FE       /* Ethernet address */
 #define CONFIG_IPADDR        10.1.8.254              /* Our ip address */
 #define CONFIG_SERVERIP      10.1.3.58               /* Tftp server ip address */

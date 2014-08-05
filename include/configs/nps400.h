@@ -99,6 +99,7 @@
 /*
  * NET
  */
+#define CONFIG_NPS_ETH
 #define CONFIG_OVERWRITE_ETHADDR_ONCE
 #define CONFIG_ETHADDR       00:C0:00:99:AA:FE       /* Ethernet address */
 #define CONFIG_IPADDR        10.1.8.254              /* Our ip address */
