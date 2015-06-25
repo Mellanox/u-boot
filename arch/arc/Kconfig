@@ -131,9 +131,11 @@ config TARGET_AXS10X
 	
 config TARGET_NPS400
 	bool "Support nps400"
+	select SUPPORT_SPL
 	
 config TARGET_NPS_MINIHE
 	bool "Support nps-miniHE"
+	select SUPPORT_SPL
 
 endchoice
 

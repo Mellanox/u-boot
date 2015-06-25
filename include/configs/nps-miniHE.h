@@ -153,4 +153,8 @@
 	"root=/dev/nfs rw "				\
 	"nfsroot=${serverip}:${rootpath}\0"
 
+#define CONFIG_SPL_LDSCRIPT 	"board/ezchip/nps/nps-miniHE_spl/u-boot-spl.lds"
+#define CONFIG_SPL_START_S_PATH "board/ezchip/nps/nps-miniHE_spl/"
+#define CONFIG_SPL_TEXT_BASE	0xFFFFE800
+
 #endif /* _CONFIG_NPS_MINI_HE_H_ */

@@ -9,6 +9,15 @@
 #include <linux/linkage.h>
 #include <asm/arcregs.h>
 
+#ifdef CONFIG_NPS_MINI_HE
+ENTRY(__start)
+	b _start
+	.word __start
+	.word __bss_start
+	.word _start
+ENDPROC(__start)
+#endif
+
 ENTRY(_start)
 	/* Setup interrupt vector base that matches "__text_start" */
 	sr	__ivt_start, [ARC_AUX_INTR_VEC_BASE]

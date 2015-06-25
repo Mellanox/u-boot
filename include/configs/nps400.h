@@ -128,4 +128,8 @@
 	"fdt_high=0xffffffff\0"					\
 	"fdtaddr=0x80e00000\0"					\
 
+#define CONFIG_SPL_LDSCRIPT 	"board/ezchip/nps/nps400_spl/u-boot-spl.lds"
+#define CONFIG_SPL_START_S_PATH "board/ezchip/nps/nps400_spl/"
+#define CONFIG_SPL_TEXT_BASE 0xf8002000
+
 #endif /* _CONFIG_NPS400_H_ */
