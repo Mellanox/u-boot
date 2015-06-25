@@ -53,7 +53,9 @@ endif
 PLATFORM_CPPFLAGS += -ffixed-r25 -D__ARC__ -gdwarf-2
 
 # Needed for relocation
+ifneq ($(CONFIG_SPL_BUILD),y)
 LDFLAGS_FINAL += -pie
+endif
 
 # Load address for standalone apps
 CONFIG_STANDALONE_LOAD_ADDR ?= 0x82000000

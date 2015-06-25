@@ -4,6 +4,8 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
+obj-y += sections.o
+ifneq ($(CONFIG_SPL_BUILD),y)
 extra-y	= start.o
 head-y := start.o
 obj-y += cache.o
@@ -24,4 +26,5 @@ obj-y += init_helpers.o
 
 obj-$(CONFIG_CMD_BOOTM) += bootm.o
 
+endif
 lib-$(CONFIG_USE_PRIVATE_LIBGCC) += _millicodethunk.o libgcc2.o
