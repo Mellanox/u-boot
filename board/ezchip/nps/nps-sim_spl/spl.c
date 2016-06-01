@@ -30,9 +30,22 @@
 * SOFTWARE.
 */
 
-#ifndef _PREBOOT_H_
-#define _PREBOOT_H_
+#include <asm/arcregs.h>
+#include "../common.h"
+#include "../nps.h"
+#include "../nps-soc_spl/spl_common.h"
 
-#define PREBOOT_SIZE	0x10000 /* 64k */
 
-#endif /* _PREBOOT_H_ */
+/* board_init_f() - spl's main function
+ */
+void board_init_f(ulong dummy)
+{
+	int err;
+
+	preload_console();
+	err = setup_pci_link();
+	if (err)
+		spl_print("SPL: PCIe link failed!\n");
+	flash_to_mem(CONFIG_NPS_UBOOT_FLASH_OFFS, CONFIG_SYS_TEXT_BASE, CONFIG_NPS_UBOOT_SIZE);
+	jump_to_uboot();
+}

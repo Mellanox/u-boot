@@ -13,7 +13,7 @@ SECTIONS
 	.text :	{
 		*(.__text_start)
 		*(.__image_copy_start)
-		board/ezchip/nps/nps400_spl/start.o (.text*)
+		board/ezchip/nps/nps-soc_spl/start.o (.text*)
 		*(.text*)
 	}
 

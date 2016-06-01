@@ -1,39 +1,88 @@
 /*
-*	Copyright (C) 2015 EZchip, Inc. (www.ezchip.com)
+* Copyright (c) 2016, Mellanox Technologies. All rights reserved.
 *
-* 	This program is free software; you can redistribute it and/or modify
-*	it under the terms of the GNU General Public License version 2 as
-*	published by the Free Software Foundation.
+* This software is available to you under a choice of one of two
+* licenses.  You may choose to be licensed under the terms of the GNU
+* General Public License (GPL) Version 2, available from the file
+* COPYING in the main directory of this source tree, or the
+* OpenIB.org BSD license below:
+*
+*     Redistribution and use in source and binary forms, with or
+*     without modification, are permitted provided that the following
+*     conditions are met:
+*
+*      - Redistributions of source code must retain the above
+*        copyright notice, this list of conditions and the following
+*        disclaimer.
+*
+*      - Redistributions in binary form must reproduce the above
+*        copyright notice, this list of conditions and the following
+*        disclaimer in the documentation and/or other materials
+*        provided with the distribution.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+* BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+* ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
 */
 
-#include "nps.h"
+#include <common.h>
 #include <netdev.h>
-
-/*
- * Board defines dependent configurations section
- */
-#ifdef CONFIG_BOARD_EARLY_INIT_R
-int board_early_init_r(void)
-{
-	configure_emem();
-
 #ifdef CONFIG_OF_LIBFDT
+#include <libfdt.h>
+#include <fdt_support.h>
+#endif
+#include "common.h"
+#include "nps.h"
+#include "serdes.h"
+#include "chip.h"
+#ifdef CONFIG_TARGET_NPS_HE
+#include "ddr_he.h"
+#else
+#include "ddr.h"
+#include "bist.h"
+#ifdef CONFIG_NPS_DDR_DEBUG
+#include "ddr_debug.h"
+#endif
+#endif
 
-	flash_to_mem(DTB_FLASH_OFFSET, DTB_EMEM_ADDRESS, DTB_MAX_SIZE);
+#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+int ft_board_setup(void *blob, bd_t *bd)
+{
+	int rc;
+	char *env_string;
 
-	fdt_set_totalsize((void*)DTB_EMEM_ADDRESS, fdt_totalsize(DTB_EMEM_ADDRESS) + FDT_PAD_SIZE);
+	env_string = getenv("krn_present_cpus");
+	if (env_string) {
+		rc = fdt_find_and_setprop(blob,
+				"/", "present-cpus",
+				env_string,
+				strlen(env_string) + 1, 1);
+		if (rc)
+			printf("Unable to update property present-cpus in fdt, "
+				"err=%s\n",
+				fdt_strerror(rc));
+	}
 
-	if (fdt_setprop((void*)DTB_EMEM_ADDRESS, FDT_ROOT_NODE_OFFSET, "present-cpus",(char*)PRESENT_CPUS_LRAM_ADDRESS, CPU_MAP_MAX_SIZE))
-		printf("ERR: Failed to update present cpus in fdt\n");
-
-	if (fdt_setprop((void*)DTB_EMEM_ADDRESS, FDT_ROOT_NODE_OFFSET, "possible-cpus",(char*)POSSIBLE_CPUS_LRAM_ADDRESS, CPU_MAP_MAX_SIZE))
-			printf("ERR: Failed to update possible cpus in fdt\n");
-
-#endif /* CONFIG_OF_LIBFDT */
+	env_string = getenv("krn_possible_cpus");
+	if (env_string) {
+		rc = fdt_find_and_setprop(blob,
+				"/", "possible-cpus",
+				env_string,
+				strlen(env_string) + 1, 1);
+		if (rc)
+			printf("Unable to update property possible-cpus in fdt, "
+				"err=%s\n",
+				fdt_strerror(rc));
+	}
 
 	return 0;
 }
-#endif /* CONFIG_BOARD_EARLY_INIT_R */
+#endif
 
 #ifdef CONFIG_CMD_NET
 int board_eth_init(bd_t *bd)
@@ -41,187 +90,157 @@ int board_eth_init(bd_t *bd)
 	int rc = 0;
 
 #ifdef CONFIG_NPS_ETH
-	rc += nps_eth_initialize();
-#endif
-#ifdef CONFIG_NPS_MINI_HE
+#ifdef CONFIG_TARGET_NPS_MINIHE
 	rc += nps_miniHE_eth_initialize();
+#else
+	if (nps_dbg_lan_serdes_init())
+		rc = nps_eth_initialize();
+#endif
 #endif
 	return rc;
 }
 #endif
+
+#ifdef CONFIG_TARGET_NPS_SIM
+int misc_init_r(void)
+{
+	unsigned char mac_addr[6];
+	char krn_string[1024];
+	char *krn_p = krn_string;
+	char *env_string;
+	char *krn_args;
+
+	setenv("krn_present_cpus", (char *)PRESENT_CPUS_LRAM_ADDRESS);
+	setenv("krn_possible_cpus", (char *)POSSIBLE_CPUS_LRAM_ADDRESS);
+
+	strcpy(krn_p, (char *)(KRN_CMDLINE_LRAM_ADDRESS));
+
+	/* override ipaddr in env */
+	env_string = strsep(&krn_p, ":");
+	strsep(&env_string, "=");
+	setenv("ipaddr", env_string);
+
+	/* override serverip in env */
+	env_string = strsep(&krn_p, ":");
+	setenv("serverip", env_string);
+
+	/* override netmask in env */
+	strsep(&krn_p, ":");
+	env_string = strsep(&krn_p, ":");
+	setenv("netmask", env_string);
+
+	/* override ethaddr in env */
+	env_string = strsep(&krn_p, "=");
+	eth_parse_enetaddr(krn_p, mac_addr);
+	if (is_valid_ether_addr(mac_addr))
+		eth_setenv_enetaddr("ethaddr", mac_addr);
+
+	/* check extra kernel parameters */
+	strsep(&krn_p, " ");
+	env_string = strsep(&krn_p, " ");
+	if (strlen(env_string) > 0) {
+		krn_args = getenv("krn_args");
+		if (krn_args) {
+			strcat(env_string, " ");
+			strcat(env_string, krn_args);
+		}
+		setenv("krn_args", env_string);
+	}
+
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_BOARD_LATE_INIT
+int board_late_init(void)
+{
+#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_HE)
+	configure_emem();
+#endif
+	configure_l2c();
+	configure_ciu();
+	configure_mtm();
+
+#ifdef CONFIG_TARGET_NPS_SIM
+	/* Copy kernel from flash to external memory */
+	/* TODO remove this once simulator support flash operations */
+	flash_to_mem(CONFIG_NPS_UIMAGE_FLASH_OFFS, CONFIG_NPS_UIMAGE_EMEM_ADDR, CONFIG_NPS_UIMAGE_SIZE);
+
+#ifdef CONFIG_OF_LIBFDT
+	/* copy dtb from flash to external memory */
+	/* TODO remove this once simulator support flash operations */
+	flash_to_mem(CONFIG_NPS_DTB_FLASH_OFFS, CONFIG_NPS_DTB_EMEM_ADDR, CONFIG_NPS_DTB_SIZE);
+#endif
+#endif /* CONFIG_TARGET_NPS_SIM */
+
+	return 0;
+}
+#endif /* CONFIG_BOARD_LATE_INIT */
 
 /*
  * Commands section
  */
 #ifndef CONFIG_ENV_IS_NOWHERE
 #include "environment.h"
-static int do_resetenv(cmd_tbl_t *cmdtp, int flag,int argc, char * const argv[])
+static int do_resetenv(cmd_tbl_t *cmdtp, int flag, int argc,
+					char * const argv[])
 {
 	char ipaddr[32];
 	char etheddr[32];
 
-
 	if (argc > 2)
 		goto usage;
 
-	strcpy(ipaddr,getenv("ipaddr"));
-	strcpy(etheddr,getenv("ethaddr"));
+	strcpy(ipaddr, getenv("ipaddr"));
+	strcpy(etheddr, getenv("ethaddr"));
 
 	if (argc == 2) {
-		if (!argv[1] && (strcmp(argv[1],"full") != 0 ))
+		if (!argv[1] && (strcmp(argv[1], "full") != 0))
 			goto usage;
 	}
 
 	set_default_env(NULL);
 
 	if (argc == 1) {
-		setenv ("ipaddr", ipaddr);
-		setenv ("ethaddr", etheddr);
+		setenv("ipaddr", ipaddr);
+		setenv("ethaddr", etheddr);
 	}
 
-	 if (saveenv()) {
-		 printf("Writing env to flash failed\n");
-		 return 1;
-	 }
+	if (saveenv()) {
+		printf("Writing env to flash failed\n");
+		return 1;
+	}
 
 	return 0;
 
 usage:
 	cmd_usage(cmdtp);
+
 	return 1;
 }
 #endif
 
-int do_file_load(char *file_name_var, char* mode)
+static int do_halt_cpu(cmd_tbl_t *cmdtp, int flag, int argc,
+					char * const argv[])
 {
-	char *file_name;
-	char cmdbuf[CONFIG_SYS_CBSIZE];
+	unsigned int value;
 
-	if ( !file_name_var || !(file_name_var[0]))
-		goto usage;
+	/* Signal CP that we are done */
+	value = read_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_0);
+	value |= CRG_GEN_PURP_0_SYNC_BIT;
+	write_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_0, value);
+	asm volatile ("sync");
 
-	file_name = getenv(file_name_var);
-	if (!file_name) {
-		printf("%s variable is not defined\n",file_name_var);
-		goto usage;
-	}
+	value = read_cluster_reg(0, 0, 0, 0x81);
+	value &= ~1;
+	write_cluster_reg(0, 0, 0, 0x81, value);
+	asm volatile ("sync");
 
-	if ( (mode != NULL) && (strcmp(mode,"serial") == 0) ) {
-		strcpy (cmdbuf, "loady");
-	} else {
-		strcpy (cmdbuf, "tftpboot ");
-		strcat (cmdbuf, file_name);
-	}
-
-	if (run_command (cmdbuf, 0) < 0) /* tftpboot ${file_name} */
-		goto usage;
-
-	return 0;
-usage:
-	printf("Usage: do_file_load [file_name] \n");
-	return 1;
-
-}
-
-static int do_uboot_write(void)
-{
-	int uboot_sf_size;
-	char *uboot_offset;
-	char *uboot_file_size;
-	char *uboot_load_address;
-	char cmdbuf[CONFIG_SYS_CBSIZE];
-
-	uboot_offset = getenv("uboot_offs");
-	uboot_file_size = getenv("filesize");
-	uboot_load_address = getenv("loadaddr");
-
-	/* Check environment variables */
-	if (!uboot_offset || !uboot_file_size || !uboot_load_address) {
-		printf("Environment variables are not defined:\n");
-		printf("uboot_offs:%s\n",uboot_offset);
-		printf("filesize:%s\n",uboot_file_size);
-		printf("loadaddr:%s\n",uboot_load_address);
-		goto usage;
-	}
-
-	/* Check file size */
-	uboot_sf_size = simple_strtoul(uboot_file_size, NULL, 16);
-	if (uboot_sf_size > UBOOT_SIZE) {
-		printf("file size is larger then %x\n",UBOOT_SIZE);
-		goto usage;
-	}
-
-	if (run_command ("sf probe 0", 0) < 0) /* sf probe 0 */
-		goto usage;
-
-	if (uboot_sf_size % CONFIG_ENV_SECT_SIZE)
-		uboot_sf_size = ((uboot_sf_size / CONFIG_ENV_SECT_SIZE) + 1) * CONFIG_ENV_SECT_SIZE;
-
-	sprintf(cmdbuf, "sf erase %s %x", uboot_offset, uboot_sf_size);
-
-	if (run_command (cmdbuf, 0) < 0) /* sf erase ${uboot_offs} ${uboot_sf_size} */
-		goto usage;
-
-	sprintf(cmdbuf, "sf write %s %s %s", uboot_load_address, uboot_offset, uboot_file_size);
-
-	if (run_command (cmdbuf, 0) < 0) /* sf  write ${loadaddr} ${uboot_offs} ${filesize} */
-		goto usage;
-
-	return 0;
-usage:
-	printf("Usage: uboot_write\n");
-	return 1;
-}
-
-static int do_uboot_update(cmd_tbl_t *cmdtp, int flag,int argc, char * const argv[])
-{
-	int ret;
-	char *arg = NULL;
-
-	if (argc > 2)
-		goto usage;
-
-	if (argc == 2)
-		arg = argv[1];
-
-	ret = do_file_load("uboot_file",arg);
-	if (ret)
-		goto usage;
-
-	ret = do_uboot_write();
-	if (ret)
-		goto usage;
-
-	return 0;
-usage:
-	cmd_usage(cmdtp);
-	return 1;
-}
-
-#ifdef CONFIG_OF_LIBFDT
-static int do_boot_prepare(cmd_tbl_t *cmdtp, int flag,int argc, char * const argv[])
-{
-	char cmdline[KRN_COMMANDLINE_MAX_SIZE];
-	int  nodeoffset;
-	char *dtb_bootargs;
-	char *env_bootargs;
-
-	/* Copy flash images to emem */
-	flash_to_mem(KERNEL_FLASH_OFFSET, UIMAGE_BASE_ADDRESS, UIMAGE_MAX_SIZE);
-	flash_to_mem(ROOTFS_FLASH_OFFSET, ROOTFS_EMEM_ADDRESS, ROOTFS_MAX_SIZE);
-
-	/* Update kernel command line */
-	nodeoffset = fdt_path_offset((void*)DTB_EMEM_ADDRESS, "/chosen");
-	if (nodeoffset < 0)
-		return nodeoffset;
-	dtb_bootargs = (char *)fdt_getprop((void*)DTB_EMEM_ADDRESS, nodeoffset, "bootargs", NULL);
-	env_bootargs = getenv("bootargs");
-	sprintf(cmdline,"%s %s %s %s", dtb_bootargs, (char*)KRN_CMDLINE_LRAM_ADDRESS, KERNEL_CMDLINE_FS_STR, (env_bootargs == NULL) ? " " : env_bootargs);
-	setenv("bootargs",cmdline);
+	/* We are done Halt!!! */
+	asm volatile ("flag 1");
 
 	return 0;
 }
-#endif
 
 #ifndef CONFIG_ENV_IS_NOWHERE
 U_BOOT_CMD(
@@ -232,15 +251,241 @@ U_BOOT_CMD(
 #endif
 
 U_BOOT_CMD(
-	ubootup, 2, 0, do_uboot_update,
-	"Write uboot to SPI flash in ${uboot_offs}",
-	"Usage: uboot_update [serial]"
+	haltcpu, 1, 0, do_halt_cpu,
+	"Halt cpu gracefully",
+	"Halt cpu gracefully"
 );
 
-#ifdef CONFIG_OF_LIBFDT
 U_BOOT_CMD(
-	boot_prepare, 2, 0, do_boot_prepare,
-	"Configure emem, copy kernel and fs to emem",
-	"Usage: boot_prepare"
+	debug, 2, 0, do_debug,
+	"Enable/Disable debug regDB prints",
+	"1(Enable)/0(Disable)"
+);
+
+U_BOOT_CMD(
+	read_reg, 5, 0, do_read_reg,
+	"read one or more registers",
+	"block reg\nread_reg block low - high\nread_reg block reg1,reg2\n"
+	"read_reg block cluster_x cluster_y reg"
+);
+
+U_BOOT_CMD(
+	write_reg, 4, 0, do_write_reg,
+	"write register",
+	"block reg value\nwrite_reg block cluster_x cluster_y reg value"
+);
+
+#ifdef CONFIG_NPS_DDR_DEBUG
+U_BOOT_CMD(
+	ddr_diagnostic, 2, 0, do_ddr_diagnostic,
+	"dump ddr information into a table format",
+	""
+);
+
+U_BOOT_CMD(
+	pup_fail_dump, 2, 0, do_pup_fail_dump,
+	"enable/disable dump in case of PUP fail",
+	"Usage: pup_fail_dump 1 or up_fail_dump 0"
+);
+
+U_BOOT_CMD(
+	print_ddr_config, 1, 0, do_print_ddr_config,
+	"Prints current DDR configuration",
+	""
+);
+
+U_BOOT_CMD(
+	ddr_pause, 2, 0, do_ddr_pause,
+	"Enable/Disable ddr_pause",
+	"1(Enable)/0(Disable)"
+);
+
+U_BOOT_CMD(
+	phy_bist, 2, 0, do_phy_bist,
+	" run & setup phy bist",
+	" mc_mask"
+);
+
+U_BOOT_CMD(
+	show_wsm, 2, 0, do_marg_and_d2,
+	"Show Write Skew Margin for DDR PHY(s)",
+	"Usage: show_wsm UM<side>_<num> or show_wsm ALL"
+);
+
+U_BOOT_CMD(
+	show_rsm, 2, 0, do_marg_and_d2,
+	"Show Read Skew Margin for DDR PHY(s)",
+	"Usage: show_rsm UM<side>_<num> or show_rsm ALL"
+);
+
+
+U_BOOT_CMD(
+	show_wcm, 2, 0, do_marg_and_d2,
+	"Show Write Centralization Margin for DDR PHY(s)",
+	"Usage: show_wcm UM<side>_<num> or show_wcm ALL"
+);
+
+U_BOOT_CMD(
+	show_rcm, 2, 0, do_marg_and_d2,
+	"Show Read Centralization Margin for DDR PHY(s)",
+	"Usage: show_rcm UM<side>_<num> or show_rcm ALL"
+);
+
+
+U_BOOT_CMD(
+	edit_wctap, 4, 0, do_edit_results,
+	"Edit Write Centralization TAP for DDR PHY",
+	"Usage: edit_wctap UM<side>_<num> bl_index tap_delay"
+);
+
+U_BOOT_CMD(
+	edit_rctap, 4, 0, do_edit_results,
+	"Edit Read Centralization TAP for DDR PHY",
+	"Usage: edit_rctap UM<side>_<num> bl_index tap_delay"
+);
+
+U_BOOT_CMD(
+	edit_wdtap, 5, 0, do_edit_results,
+	"Edit single DQ Write Delay TAP for DDR PHY",
+	"Usage: edit_wdtap UM<side>_<num> bl_index bit_index tap_delay"
+);
+
+U_BOOT_CMD(
+	edit_rdtap, 5, 0, do_edit_results,
+	"Edit single DQ Read Delay TAP for DDR PHY",
+	"Usage: edit_rdtap UM<side>_<num> bl_index bit_index tap_delay"
+);
+
+U_BOOT_CMD(
+	dto_probing, 4, 0, do_dto_probing,
+	"Enable DTO signal probing",
+	"UMx dto_msel dto_isel"
+);
+
+U_BOOT_CMD(
+	ato_probing, 4, 0, do_ato_probing,
+	"Enable ATO signal probing",
+	"UMx ato_msel ato_isel"
+);
+
+U_BOOT_CMD(
+	write_2d, 2, 0, do_marg_and_d2,
+	"Per-Byte-Lane Write Data Eye Plotting for DDR PHY(s)",
+	"Usage: write_2d UM<side>_<num> or write_2d ALL"
+);
+
+U_BOOT_CMD(
+	read_2d, 2, 0, do_marg_and_d2,
+	"DDR PHY Per-Byte-Lane read Data Eye Plotting for DDR PHY(s)",
+	"Usage: read_2d UM<side>_<num> or read_2d ALL"
+);
+
+U_BOOT_CMD(
+	sdram_vref, 4, 0, do_vref,
+	"Modify SDRAM VREF Setup",
+	"Usage: sdram_vref UM<side>_<num> bl_index vref_val"
+);
+
+U_BOOT_CMD(
+	phy_vref, 4, 0, do_vref,
+	"Modify DDR PHY VREF Setup",
+	"Usage: phy_vref UM<side>_<num> bl_index vref_val"
+);
+
+U_BOOT_CMD(
+	phy_vref_prob, 3, 0, do_phy_vref_prob,
+	"Modify DDR PHY VREF Setup",
+	"Usage: phy_vref_prob UM<side>_<num> bl_index"
+);
+
+U_BOOT_CMD(
+	pub_record, 3, 0, do_ddr_basic,
+	"Recording DDR PHY Registers State",
+	"Usage: pub_record UM<s>_<n> < 0x<addr> or name or ALL >"
+);
+
+U_BOOT_CMD(
+	pub_restore, 3, 0, do_ddr_basic,
+	"Restoring DDR PHY Registers State",
+	"Usage: pub_restore UM<s>_<n> < 0x<addr> or name or ALL >"
+);
+
+U_BOOT_CMD(
+	pub_read, 3, 0, do_ddr_basic,
+	"Reading DDR PHY Register value",
+	"Usage: pub_read UM<s>_<n> < 0x<addr> or name >"
+);
+
+U_BOOT_CMD(
+	pub_dump, 2, 0, do_ddr_basic,
+	"Dump All DDR PHY Registers value",
+	"Usage: pub_dump UM<s>_<n>"
+);
+
+U_BOOT_CMD(
+	mem_read_loop, 7, 0, do_mem_read_loop,
+	" read 16/32 bytes from external memory",
+	" mc_mask bank_group bank row column size"
+);
+
+U_BOOT_CMD(
+	pub_write, 4, 0, do_ddr_basic,
+	"Writing DDR PHY Register value",
+	"Usage: pub_write UM<s>_<n> < 0x<addr> or name > 0x<val>"
+);
+
+U_BOOT_CMD(
+	post_ddr, 2, 0, do_post_training,
+	"do post ddr training",
+	"size"
+);
+
+U_BOOT_CMD(
+	ddr_training, 2, 0, do_ddr_training_steps,
+	"do DDR training steps according to pir_val",
+	"Usage: ddr_training pir_val (0xFFFFFFFF for default mode)"
+);
+
+U_BOOT_CMD(
+	pup_rerun, 2, 0, do_configure_emem,
+	"rerun DDR MC and PHY configuration",
+	"Usage: pup_rerun"
+);
+
+U_BOOT_CMD(
+	mem_write, 15, 0, do_mem_write,
+	" write provided 16/32 bytes to external memory",
+	" mc_mask bank_group bank row column size 0x<word0> 0x<word1>..."
+);
+
+U_BOOT_CMD(
+	mem_write_loop, 15, 0, do_mem_write_loop,
+	" write provided 16/32 "
+	"bytes to external memory in loop",
+	" mc_mask bank_group bank row column size 0x<word0> 0x<word1>..."
+);
+
+U_BOOT_CMD(
+	mem_read, 7, 0, do_mem_read,
+	" read 32 bytes from external memory",
+	" mc_mask bank_group bank row column size"
 );
 #endif
+U_BOOT_CMD(
+	ddr_bist, 7, 0, do_ddr_bist,
+	"run ddr bist commands",
+	"show config\n"
+	"ddr_bist run <mc_mask> 11 <seed> [rep_mode] [op_mode]\n"
+	"ddr_bist run <mc_mask> <config_set_id> [rep_mode] [op_mode]\n"
+	"ddr_bist dump <mc_mask> [stop]\n"
+	"ddr_bist pattern <mc_mask> <config> [change byte]\n"
+	"ddr_bist loop <mc_mask> <iterations> [start/fixed_seed] <seed>\n"
+	"ddr_bist rd_loop <mc_mask> <iterations> <compare_num> start/fixed_seed <seed>"
+);
+
+U_BOOT_CMD(
+	bus_test, 3, 0, do_bus_test,
+	"test ddr address or data buses",
+	"mc_mask bus(address/data) "
+);
+

@@ -9,7 +9,7 @@
 #include <linux/linkage.h>
 #include <asm/arcregs.h>
 
-#ifdef CONFIG_NPS_MINI_HE
+#ifdef CONFIG_TARGET_NPS_MINIHE
 ENTRY(__start)
 	b _start
 	.word __start

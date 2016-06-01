@@ -1,19 +1,25 @@
 config SYS_BOARD
-        default "nps"
+	default "nps"
 
 config SYS_VENDOR
 	default "ezchip"
 
-if TARGET_NPS400
-
+if TARGET_NPS_SIM
 config SYS_CONFIG_NAME
-	default "nps400"
+	default "nps-sim"
+endif
 
+if TARGET_NPS_SOC
+config SYS_CONFIG_NAME
+	default "nps-soc"
 endif
 
 if TARGET_NPS_MINIHE
-
 config SYS_CONFIG_NAME
 	default "nps-miniHE"
-	
+endif
+
+if TARGET_NPS_HE
+config SYS_CONFIG_NAME
+	default "nps-HE"
 endif

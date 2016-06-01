@@ -4,9 +4,10 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include "nps_spi.h"
+#include <common.h>
 #include <malloc.h>
 #include <asm/io.h>
+#include "nps_spi.h"
 
 static inline struct nps_spi_slave *to_nps_spi(struct spi_slave *slave)
 {

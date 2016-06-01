@@ -5,6 +5,8 @@
 #
 
 obj-y += sections.o
+obj-y += memcpy-700.o
+obj-y += memset.o
 ifneq ($(CONFIG_SPL_BUILD),y)
 extra-y	= start.o
 head-y := start.o
@@ -17,8 +19,6 @@ obj-y += strcmp.o
 obj-y += strcpy-700.o
 obj-y += strlen.o
 obj-y += memcmp.o
-obj-y += memcpy-700.o
-obj-y += memset.o
 obj-y += reset.o
 obj-y += timer.o
 obj-y += ints_low.o

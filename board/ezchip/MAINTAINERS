@@ -1,8 +1,12 @@
 - BOARD
-M:	Roy Vardi <royv@ezchip.com>
+M:	Elad Kanfi <eladkan@mellanox.com>
 S:	Maintained
 F:	board/ezchip/nps/
-F:	include/configs/nps400.h
+F:	include/configs/nps-soc.h
+F:	include/configs/nps-sim.h
 F:	include/configs/nps-miniHE.h
-F:	configs/nps400_defconfig
+F:	include/configs/nps-HE.h
+F:	configs/nps-soc_defconfig
+F:	configs/nps-sim_defconfig
 F:	configs/nps-miniHE_defconfig
+F:	configs/nps-HE_defconfig

@@ -24,7 +24,11 @@
 #define NPS_ETH_GE_MAC_CFG_3_RX_IFG_TH		0x14
 
 /* dbg_lan registers */
+#ifdef CONFIG_NPS_DBG_LAN_WEST
+#define NPS_ETH_DBG_LAN_BASE		0xF7070000
+#else
 #define NPS_ETH_DBG_LAN_BASE		0xF7470000
+#endif
 #define NPS_ETH_DBG_LAN_TX_CTL		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x800)
 #define NPS_ETH_DBG_LAN_TX_BUF		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x808)
 #define NPS_ETH_DBG_LAN_RX_CTL		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x810)

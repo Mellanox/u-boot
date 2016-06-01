@@ -30,9 +30,10 @@
 * SOFTWARE.
 */
 
-#ifndef _PREBOOT_H_
-#define _PREBOOT_H_
+#ifndef __GEN3_UCODE_H_
+#define __GEN3_UCODE_H_
 
-#define PREBOOT_SIZE	0x10000 /* 64k */
+#define SBUS_MASTER_UCODE_SIZE			3365
+#define XDMEM_PACKED_IMAGE_UCODE_SIZE	8043
 
-#endif /* _PREBOOT_H_ */
+#endif /* __GEN3_UCODE_H_ */

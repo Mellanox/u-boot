@@ -30,9 +30,8 @@
 * SOFTWARE.
 */
 
-#ifndef _PREBOOT_H_
-#define _PREBOOT_H_
+#ifndef __SPL_H_
+#define __SPL_H_
 
-#define PREBOOT_SIZE	0x10000 /* 64k */
 
-#endif /* _PREBOOT_H_ */
+#endif /* __SPL_H_ */
