@@ -50,21 +50,21 @@ void spl_print(const char* s);
 #define UBOOT_ENV_SIZE_TO_READ 3000
 
 /* PCI lanes */
-#define PCI_LANES_X8	8
-#define PCI_LANES_X1	1
+#define PCI_LANES	1
+#define REF_SELECT	0x10000
+#define PCIE_BYPASS	0xff
+#define PCIE_MODES	1
 
 /* PCI gen */
 #define PCI_GEN1	1
 #define PCI_GEN2	2
 #define PCI_GEN3	3
+#define PCI_GEN_STR	"pci_gen"
+#define PCI_GEN_STR_LEN 7
 
 /* Physical functions */
 #define NUM_PFS			4
-#ifdef CONFIG_TARGET_NPS_SOC
-#define USED_PFS		1
-#else
-#define USED_PFS		2
-#endif
+#define PCI_PFS			1
 
 /* CFGB block */
 #define CFGB_WEST_BLOCK_ID		0x41A
@@ -74,6 +74,7 @@ void spl_print(const char* s);
 #define SERDES_WEST_BLOCK_ID		0x41D
 #define SERDES_EAST_BLOCK_ID		0x51D
 
+#define SERDES_REG_REF_SELECT_0		0x110
 #define SERDES_REG_REF_SELECT_1		0x111
 #define SERDES_REG_PCIE_BYPASS		0x120
 #define SERDES_REG_PCIE_PCS_RST_N	0x124
@@ -84,8 +85,7 @@ void spl_print(const char* s);
 #define SERDES_PCIE_PCS_DEASSERT	0x1
 #define SERDES_PCIE_EN_PCS_INTR		0x5
 #define SERDES_PCIE_DI_PCS_INTR		0x7
-#define SERDES_PCIE_X1				0x1
-#define SERDES_PCIE_X8				0x4
+#define SERDES_PCIE_DISABLE			0x0
 
 #define SERDES_INT_CODE_CRC				0x3C
 #define SERDES_INT_DATA_CRC				0x0
@@ -101,14 +101,6 @@ void spl_print(const char* s);
 #define SBUS_DATA_ROM_ENABLED		0x3 /* exec completed & acknowledged */
 
 #define SBUS_RCVR_LAST_SERDES		0x3B
-#define SBUS_RCVR_SERDES_40			0x29
-#define SBUS_RCVR_SERDES_41			0x2B
-#define SBUS_RCVR_SERDES_42			0x2D
-#define SBUS_RCVR_SERDES_43			0x2F
-#define SBUS_RCVR_SERDES_44			0x31
-#define SBUS_RCVR_SERDES_45			0x33
-#define SBUS_RCVR_SERDES_46			0x35
-#define SBUS_RCVR_SERDES_47			0x37
 #define SBUS_RCVR_SERDES_48			0x39
 
 #define SBUS_RCVR_SERDES_BROADCAST	0xFF
@@ -165,10 +157,6 @@ void spl_print(const char* s);
 
 #define DBI_CTRL_REG		0x1B0
 #define DBI_CTRL_PF_OFFSET	0xA
-#define DBI_CTRL_PF0_VAL	0x0
-#define DBI_CTRL_PF1_VAL	0x400
-#define DBI_CTRL_PF2_VAL	0x800
-#define DBI_CTRL_PF3_VAL	0x1000
 
 #define DBI_CS2_REG					0x1B1
 #define DBI_CS2_RO_ENABLE_RW		0x1
@@ -207,8 +195,68 @@ void spl_print(const char* s);
 #define CS_SUBSYSTEM_VENDOR_ID_OFFSET		0x2C
 #define SUBSYSTEM_VENDOR_ID_BYTE_SIZE		4
 
+#define CS_CAP_PTR_OFFSET			0x34
+#define CAP_PTR_ADDRESS_BYTE_SIZE		1
+
 #define CS_SUBSYSTEM_ID_OFFSET			0x2E
 #define SUBSYSTEM_ID_BYTE_SIZE			2
+
+#define CS_PCIE_CAP_START_OFFSET		0x100
+
+#define PCI_CAP_POWER_MANAGEMENT		0x1
+#define PCI_CAP_MSI				0x5
+#define PCI_CAP_STANDARD			0x10
+#define PCIE_CAP_ADVANCED_ERROR_REPORTING	0x1
+#define PCIE_CAP_VENDOR_SPECIFIC_INFORMATION	0xb
+#define PCIE_CAP_SECONDARY_PCIE_EXTENDED	0x19
+
+/*
+ * maximum jumps during the removal of unneeded PCI or PCIe capabilities
+ * through the capability list - needs to be at least the number of capabilities
+ */
+#define MAX_CAPABILITY_LIST_JUMPS		20
+
+#define IS_NEEDED_PCI_CAP(cap) \
+	((cap.id == PCI_CAP_POWER_MANAGEMENT) || \
+	(cap.id == PCI_CAP_MSI) || \
+	(cap.id == PCI_CAP_STANDARD))
+
+#define IS_NEEDED_PCIE_CAP(extended_cap) \
+	((extended_cap.id == PCIE_CAP_ADVANCED_ERROR_REPORTING) || \
+	(extended_cap.id == PCIE_CAP_VENDOR_SPECIFIC_INFORMATION) || \
+	(extended_cap.id == PCIE_CAP_SECONDARY_PCIE_EXTENDED))
+
+struct cap_ptr {
+	union {
+		struct {
+			u32 reserved		: 24,
+			ptr			: 8;
+		};
+		u32 value;
+	};
+};
+
+struct pci_cap {
+	union {
+		struct {
+			u32 extra		: 16,
+			next_cap		: 8,
+			id			: 8;
+		};
+		u32 value;
+	};
+};
+
+struct pcie_cap {
+	union {
+		struct {
+			u32 next_cap		: 12,
+			version			: 4,
+			id			: 16;
+		};
+		u32 value;
+	};
+};
 
 struct pci_bar {
 	union {

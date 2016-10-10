@@ -40,7 +40,8 @@
 #define BIST_PATTERN_4_SIZE		128
 #define BIST_PATTERN_5_SIZE		128
 #define BIST_PATTERN_6_SIZE		8
-#define BIST_NUM_OF_PATTERNS	7
+#define BIST_PATTERN_7_SIZE      8
+#define BIST_NUM_OF_PATTERNS	   8
 #define BIST_MAX_PATTERN_SIZE    2048
 
 u8 bist_pattern_0[BIST_PATTERN_0_SIZE] = {   /* AKA NPS_killer */
@@ -383,6 +384,10 @@ u8 bist_pattern_5[BIST_PATTERN_5_SIZE] = {   /* AKA address pattern */
 
 u8 bist_pattern_6[BIST_PATTERN_6_SIZE] = {   /* init pattern */
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+u8 bist_pattern_7[BIST_PATTERN_7_SIZE] = {
+      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 
 #endif /* _BIST_PATTERN_H_ */

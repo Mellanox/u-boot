@@ -49,19 +49,21 @@
 		((__ExtMemType == DDR4_16BIT) || (__ExtMemType == DDR3_16BIT))
 #define   IS_DDR4_DEVICE(__ExtMemType)\
 		((__ExtMemType == DDR4_8BIT) || (__ExtMemType == DDR4_16BIT))
-#define	  IS_DDR3_LOW_GROUP(__speed_bin)\
+#define	  IS_DDR3_LOW_GROUP(__speed_bin, __type)\
+		((!IS_DDR4_DEVICE(__type)) &&\
 		((__speed_bin == DDR3_800D)  || (__speed_bin == DDR3_800E)  ||\
 		 (__speed_bin == DDR3_1066E) || (__speed_bin == DDR3_1066F) ||\
 		 (__speed_bin == DDR3_1066G) || (__speed_bin == DDR3_1333F) ||\
 		 (__speed_bin == DDR3_1333G) || (__speed_bin == DDR3_1333H) ||\
-		 (__speed_bin == DDR3_1333J))
+		 (__speed_bin == DDR3_1333J)))
 
-#define	  IS_DDR4_LOW_GROUP(__speed_bin)\
+#define	  IS_DDR4_LOW_GROUP(__speed_bin, __type)\
+		((IS_DDR4_DEVICE(__type)) &&\
 		((__speed_bin == DDR4_1600J) || (__speed_bin == DDR4_1600K) ||\
 		 (__speed_bin == DDR4_1600L) || (__speed_bin == DDR4_1866L) ||\
 		 (__speed_bin == DDR4_1866M) || (__speed_bin == DDR4_1866N) ||\
 		 (__speed_bin == DDR4_2133N) || (__speed_bin == DDR4_2133P) ||\
-		 (__speed_bin == DDR4_2133R))
+		 (__speed_bin == DDR4_2133R)))
 
 
 #define	  IS_DDR4_1600_GROUP(__speed_bin)\

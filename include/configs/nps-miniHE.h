@@ -159,7 +159,7 @@
 	"uboot_file=\"releases/nps/u-boot.bin\"\0"		\
 	"krn_offs=600000\0"					\
 	"krn_file=\"releases/nps/uImage\"\0"			\
-	"krn_args=mem=512M maxcpus=2\0"				\
+	"extra_bootargs=mem=512M maxcpus=2\0"				\
 	"load_kernel=sf probe 0;"				\
 	"sf read ${loadaddr} ${krn_offs} 40; "			\
 	"upkrn_sz; "						\
@@ -172,7 +172,7 @@
 	"addmac=setenv bootargs ${bootargs} "			\
 	"mac=${ethaddr}\0"					\
 	"miscargs=setenv bootargs ${bootargs} "			\
-	"${krn_args}\0"						\
+	"${extra_bootargs}\0"						\
 	"nfsargs=setenv bootargs ${bootargs} "			\
 	"root=/dev/nfs rw "					\
 	"nfsroot=${serverip}:${rootpath}\0"

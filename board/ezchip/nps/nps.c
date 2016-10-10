@@ -108,7 +108,7 @@ int misc_init_r(void)
 	char krn_string[1024];
 	char *krn_p = krn_string;
 	char *env_string;
-	char *krn_args;
+	char *extra_bootargs;
 
 	setenv("krn_present_cpus", (char *)PRESENT_CPUS_LRAM_ADDRESS);
 	setenv("krn_possible_cpus", (char *)POSSIBLE_CPUS_LRAM_ADDRESS);
@@ -139,12 +139,12 @@ int misc_init_r(void)
 	strsep(&krn_p, " ");
 	env_string = strsep(&krn_p, " ");
 	if (strlen(env_string) > 0) {
-		krn_args = getenv("krn_args");
-		if (krn_args) {
+		extra_bootargs = getenv("extra_bootargs");
+		if (extra_bootargs) {
 			strcat(env_string, " ");
-			strcat(env_string, krn_args);
+			strcat(env_string, extra_bootargs);
 		}
-		setenv("krn_args", env_string);
+		setenv("extra_bootargs", env_string);
 	}
 
 	return 0;
@@ -270,7 +270,7 @@ U_BOOT_CMD(
 );
 
 U_BOOT_CMD(
-	write_reg, 4, 0, do_write_reg,
+	write_reg, 6, 0, do_write_reg,
 	"write register",
 	"block reg value\nwrite_reg block cluster_x cluster_y reg value"
 );

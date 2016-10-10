@@ -41,55 +41,47 @@
 #include "../nps.h"
 #include "gen3_ucode.h"
 
+#define DISABLE_ALL_PCI_LANES	0x1FF
+
 DECLARE_GLOBAL_DATA_PTR;
 gd_t gdata __attribute__ ((section(".data")));
 
-/* PCI configuration */
+/* PCI generation */
 static int pci_gen = PCI_GEN1;
-static int pci_lanes = PCI_LANES_X1;
-static int pci_pfs = USED_PFS;
-static int *pci_serdes;
-
-/* x1/x8 serdes */
-static int pci_x8_serdes[PCI_LANES_X8] = {SBUS_RCVR_SERDES_40,SBUS_RCVR_SERDES_41,
-		SBUS_RCVR_SERDES_42,SBUS_RCVR_SERDES_43,SBUS_RCVR_SERDES_44,
-		SBUS_RCVR_SERDES_45,SBUS_RCVR_SERDES_46,SBUS_RCVR_SERDES_47};
-static int pci_x1_serdes[PCI_LANES_X1] = {SBUS_RCVR_SERDES_48};
 
 /* uboot environment settings */
 static struct spi_flash *flash;
 #ifdef CONFIG_TARGET_NPS_SOC
 static char uboot_env[UBOOT_ENV_SIZE_TO_READ];
 static char current_env[UBOOT_ENV_SIZE_TO_READ];
-static char *pci_config_str = "pci_config";
 #endif
 
 /* globals */
 extern unsigned int xdmem_image_ucode[];
 extern unsigned int sbus_master_ucode[];
 
-
-/* get_pci_config() - read the PCI configuration from flash and update
- *                    global variables accordingly.
+/*
+ * get_pci_gen() - read the PCI generation from flash and update
+ *                    the global variable accordingly.
  */
-static void get_pci_config(void)
+static int get_pci_gen(void)
 {
 #ifdef CONFIG_TARGET_NPS_SOC
 	int uboot_env_pos, current_env_pos = 0;
-	char *pci_config, *env_string = NULL;
+	char *pci_gen_env, *env_string = NULL;
 
 	/* read uboot env from the flash */
 	spi_flash_read(flash, CONFIG_ENV_OFFSET, UBOOT_ENV_SIZE_TO_READ*sizeof(char), &uboot_env);
 
-	/* find the pci configuration */
+	/* find the pci generation */
 	for (uboot_env_pos = 0; uboot_env_pos < UBOOT_ENV_SIZE_TO_READ; uboot_env_pos++) {
 		current_env[current_env_pos] = uboot_env[uboot_env_pos];
 		current_env_pos++;
 		if (!uboot_env[uboot_env_pos]) {
-			/* found null termination, check if the string is pci config */
+			/* found null termination, check if the string is pci gen */
 			current_env_pos = 0;
 			if (*current_env) {
-				if (strncmp(current_env, pci_config_str, 10) == 0) {
+				if (strncmp(current_env, PCI_GEN_STR, PCI_GEN_STR_LEN) == 0) {
 					env_string = strtok(current_env, "=");
 					env_string = strtok(NULL, "=");
 					break;
@@ -100,68 +92,21 @@ static void get_pci_config(void)
 
 	if (env_string) {
 		/* get pci gen */
-		pci_config = strsep(&env_string, ",");
-		if (pci_config)
-			pci_gen = pci_config[3]-'0';
-		/* get pci lanes */
-		pci_config = strsep(&env_string, ",");
-		if (pci_config)
-			pci_lanes = pci_config[1]-'0';
-		/* get number of physical functions */
-		pci_config = strsep(&env_string, ",");
-		if (pci_config)
-			pci_pfs = pci_config[3]-'0';
+		pci_gen_env = strsep(&env_string, ",");
+		if (pci_gen_env)
+			pci_gen = pci_gen_env[0]-'0';
+	}
+
+	if (!(pci_gen == PCI_GEN1 || pci_gen == PCI_GEN2 ||
+		pci_gen == PCI_GEN3)) {
+		printf("***) INVALID PCI GEN\n");
+		printf("***) PCI GEN MUST BE OF THE FOLLOWING: [%d, %d, %d]\n",
+			PCI_GEN1, PCI_GEN2, PCI_GEN3);
+		return 1;
 	}
 #endif
-}
 
-/*
- * update_pci_settings() - update PCI settings
- */
-static int update_pci_settings(unsigned int *ref_select,
-		unsigned int *pcie_bypass, unsigned int *pcie_modes)
-{
-	int res;
-
-	printf("SPL: Setting up PCI ");
-
-	get_pci_config();
-
-	printf("x%d ", pci_lanes);
-	if (pci_lanes == PCI_LANES_X8) {
-		*ref_select = 0x0FF00;
-		*pcie_bypass = 0x100;
-		*pcie_modes = SERDES_PCIE_X8;
-		pci_serdes = pci_x8_serdes;
-	} else if (pci_lanes == PCI_LANES_X1) {
-		*ref_select = 0x10000;
-		*pcie_bypass = 0xFF;
-		*pcie_modes = SERDES_PCIE_X1;
-		pci_serdes = pci_x1_serdes;
-	} else {
-		printf("INVALID LANES!");
-		goto error;
-	}
-
-	printf("[GEN%d] ", pci_gen);
-	if (!((pci_gen == PCI_GEN1) | (pci_gen == PCI_GEN2) | (pci_gen == PCI_GEN3))) {
-		printf("INVALID GEN!");
-		goto error;
-	}
-
-	printf("with %d PFs ", pci_pfs);
-	if ((pci_pfs < 1) | (pci_pfs > NUM_PFS)) {
-		printf("INVALID PFS!");
-		goto error;
-	}
-
-	res = 0;
-	goto out;
-error:
-	res = 1;
-out:
-	printf("\n");
-	return res;
+	return 0;
 }
 
 /* write_ro_pci_core_reg() - write read-only PCIe core configuration space register
@@ -290,98 +235,242 @@ static int do_poll_link_status(void)
 	return 0;
 }
 
+#ifdef CONFIG_TARGET_NPS_SOC
+/* remove_unnecessary_pci_capabilities() - Remove every capability but the
+ * following from the PCI capability list:
+ *	- Power Management, id = 1
+ *	- MSI, id = 5
+ *	- Standard, id = 16
+ */
+static void remove_unnecessary_pci_capabilities(void)
+{
+	unsigned int max_jumps = MAX_CAPABILITY_LIST_JUMPS, prev_cap_offset = 0;
+	struct pci_cap cap, prev_cap = { .value = 0 };
+	struct cap_ptr start_addr = { .value =
+		read_non_cluster_reg(PCIB_BLOCK_ID,
+			CS_OFFSET_TO_ADDR(CS_CAP_PTR_OFFSET)) };
+
+	if (!start_addr.ptr)
+		/* the list is empty - nothing to be done */
+		return;
+
+	start_addr.reserved = 0;
+	cap.value =
+		read_non_cluster_reg(PCIB_BLOCK_ID,
+			CS_OFFSET_TO_ADDR(start_addr.ptr));
+	while (max_jumps--) {
+		if (!IS_NEEDED_PCI_CAP(cap)) {
+			spl_print("\n     [disabled PCI capability %d]",
+				cap.id);
+			if (!prev_cap_offset) {
+				/*
+				 * first capability that is removed - need to
+				 * update the cap ptr in the standarized
+				 * configuration space
+				 */
+				start_addr.ptr = cap.next_cap;
+				write_non_cluster_reg(PCIB_BLOCK_ID,
+					CS_OFFSET_TO_ADDR(CS_CAP_PTR_OFFSET),
+					start_addr.value);
+			}
+			else {
+				prev_cap.next_cap = cap.next_cap;
+				write_non_cluster_reg(PCIB_BLOCK_ID,
+					CS_OFFSET_TO_ADDR(prev_cap_offset),
+					prev_cap.value);
+			}
+		}
+		else {
+			if (!prev_cap_offset)
+				prev_cap_offset = start_addr.ptr;
+			else
+				prev_cap_offset = prev_cap.next_cap;
+			prev_cap.value = cap.value;
+		}
+
+		if (!cap.next_cap)
+			/* reached the end of the list */
+			break;
+
+		/* moving forward in the list */
+		cap.value =
+			read_non_cluster_reg(PCIB_BLOCK_ID,
+				CS_OFFSET_TO_ADDR(cap.next_cap));
+	}
+}
+
+/* update_first_pcie_capability() - Update the first PCIe capability to be one
+ * of the following:
+ *	- Advanced Error Reporting, id = 1
+ *	- Vendor Specific Information, id = 11
+ *	- Secondary PCIe Extended, id = 25
+ */
+static void update_first_pcie_capability(void)
+{
+	unsigned int max_jumps = MAX_CAPABILITY_LIST_JUMPS;
+	struct pcie_cap extended_cap =
+		{ .value = read_non_cluster_reg(PCIB_BLOCK_ID,
+			CS_OFFSET_TO_ADDR(CS_PCIE_CAP_START_OFFSET)) };
+
+	if (IS_NEEDED_PCIE_CAP(extended_cap))
+		/* first capability here is needed - no need for any changes */
+		return;
+
+	while (max_jumps--) {
+		if (IS_NEEDED_PCIE_CAP(extended_cap)) {
+			/*
+			 * found a needed capability, so updating the first
+			 * one
+			 */
+			write_non_cluster_reg(PCIB_BLOCK_ID,
+				CS_OFFSET_TO_ADDR(CS_PCIE_CAP_START_OFFSET),
+				extended_cap.value);
+			break;
+		}
+
+		spl_print("\n     [disabled PCIe capability %d]",
+			extended_cap.id);
+
+		if (!extended_cap.next_cap) {
+			/*
+			 * reached the end of the list - no needed capabilites
+			 * in the PCIe capability list, so zeroing the base
+			 * address
+			 */
+			write_non_cluster_reg(PCIB_BLOCK_ID,
+				CS_OFFSET_TO_ADDR(CS_PCIE_CAP_START_OFFSET),
+				0x0);
+			break;
+		}
+
+		/* moving forward in the list */
+		extended_cap.value = read_non_cluster_reg(PCIB_BLOCK_ID,
+			CS_OFFSET_TO_ADDR(extended_cap.next_cap));
+	}
+}
+
+/* remove_unnecessary_pcie_capabilities() - Remove every capability but the
+ * following from the PCIe capability list:
+ *	- Advanced Error Reporting, id = 1
+ *	- Vendor Specific Information, id = 11
+ *	- Secondary PCIe Extended, id = 25
+ */
+static void remove_unnecessary_pcie_capabilities(void)
+{
+	unsigned int max_jumps = MAX_CAPABILITY_LIST_JUMPS;
+	unsigned int prev_cap_offset = CS_PCIE_CAP_START_OFFSET;
+	struct pcie_cap prev_extended_cap = { .value =
+		read_non_cluster_reg(PCIB_BLOCK_ID,
+			CS_OFFSET_TO_ADDR(CS_PCIE_CAP_START_OFFSET)) };
+	struct pcie_cap extended_cap = { .value = prev_extended_cap.value };
+
+	while (max_jumps--) {
+		if (!extended_cap.next_cap)
+			/* reached the end of the list */
+			break;
+
+		/* moving forward in the list */
+		extended_cap.value = read_non_cluster_reg(PCIB_BLOCK_ID,
+			CS_OFFSET_TO_ADDR(extended_cap.next_cap));
+
+		if (!IS_NEEDED_PCIE_CAP(extended_cap)) {
+			spl_print("\n     [disabled PCIE capability %d]",
+				extended_cap.id);
+			prev_extended_cap.next_cap = extended_cap.next_cap;
+			write_non_cluster_reg(PCIB_BLOCK_ID,
+				CS_OFFSET_TO_ADDR(prev_cap_offset),
+				prev_extended_cap.value);
+		}
+		else {
+			prev_cap_offset = prev_extended_cap.next_cap;
+			prev_extended_cap.value = extended_cap.value;
+		}
+	}
+}
+
+/* remove_unnecessary_capabilities() - Remove every capability but the following
+ * from the PCI and PCIe capability lists:
+ *	- Power Management, PCI capability with id = 1
+ *	- MSI, PCI capability with id = 5
+ *	- Standard, PCI capability with id = 16
+ *	- Advanced Error Reporting, PCIe capability with id = 1
+ *	- Secondary PCIe Extended, PCIe capability with id = 11
+ *	- Vendor Specific Information, PCIe capability with id = 25
+ */
+static void remove_unnecessary_capabilities(void)
+{
+	/* removing from PCI capability list */
+	remove_unnecessary_pci_capabilities();
+
+	/*
+	 * in case the first capability in the PCIe list is not needed, it
+	 * should be replaced with the first that is needed
+	 */
+	update_first_pcie_capability();
+
+	/* removing from PCIe capability list */
+	remove_unnecessary_pcie_capabilities();
+
+	spl_print("\n");
+}
+#endif /* CONFIG_TARGET_NPS_SOC */
+
 /* update_cs() - Write vendor ids, device ids and base bar
- * in to configuration space for all physical functions
+ * in to configuration space
  *
  */
 static void update_cs(void)
 {
-	int i;
-	struct msixcap_offset msix_offset;
-	unsigned long ethernet_ctrl_class_code;
 #ifndef CONFIG_TARGET_NPS_SOC
 	struct pci_bar bar;
+#else
+	int i;
 #endif
 
-	/* read PF1 class code */
-	set_dbi_pf(1);
-	ethernet_ctrl_class_code = read_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_CLASS_CODE_OFFSET));
-
-	/* update configuration space for each physical function */
-	for (i = 0; i < NUM_PFS; i++) {
-		/* Choose physical function */
-		set_dbi_pf(i);
-
-		/* Fix class code for PF1,2,3 */
-		if (i > 0)
-			write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_CLASS_CODE_OFFSET), ethernet_ctrl_class_code);
+	/* Choose the physical function for the configuration */
+	set_dbi_pf(0);
 
 #ifdef CONFIG_TARGET_NPS_SOC
-		/* Set BAR sizes (disable BAR0,1,2,3,5)*/
-		write_non_cluster_reg(PCIB_BLOCK_ID, DBI_CS2_REG, DBI_CS2_RO_ENABLE_RW);
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_0_BASE_ADDR_OFFSET), 0);
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_1_BASE_ADDR_OFFSET), 0);
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_2_BASE_ADDR_OFFSET), 0);
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_3_BASE_ADDR_OFFSET), 0);
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_4_BASE_ADDR_OFFSET), 0x1FFFFFF);
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_5_BASE_ADDR_OFFSET), 0);
-		write_non_cluster_reg(PCIB_BLOCK_ID, DBI_CS2_REG, DBI_CS2_RO_DISABLE_RW);
+	/* Set BAR sizes (disable BAR0,1,2,3,5) */
+	write_non_cluster_reg(PCIB_BLOCK_ID, DBI_CS2_REG, DBI_CS2_RO_ENABLE_RW);
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_0_BASE_ADDR_OFFSET), 0);
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_1_BASE_ADDR_OFFSET), 0);
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_2_BASE_ADDR_OFFSET), 0);
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_3_BASE_ADDR_OFFSET), 0);
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_4_BASE_ADDR_OFFSET), 0x1FFFFFF);
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_5_BASE_ADDR_OFFSET), 0);
+	write_non_cluster_reg(PCIB_BLOCK_ID, DBI_CS2_REG, DBI_CS2_RO_DISABLE_RW);
+	remove_unnecessary_capabilities();
 #endif
 
-		/* MSI-X updates */
-		msix_offset.value = read_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_MSIX_CAP_TABLE_OFFSET));
-		msix_offset.bir = 2;
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_MSIX_CAP_TABLE_OFFSET), msix_offset.value);
-		msix_offset.value = read_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_MSIX_CAP_PBA_OFFSET));
-		msix_offset.bir = 2;
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_MSIX_CAP_PBA_OFFSET), msix_offset.value);
-
-		/* SR-IOV disable (set initial, total and & num of VFs to zero) */
-		write_non_cluster_reg(PCIB_BLOCK_ID, PCIB_SRIOV_TOTAL_AND_INITIAL_VFS, 0x0);
-		write_non_cluster_reg(PCIB_BLOCK_ID, PCIB_SRIOV_NUM_VFS, (read_non_cluster_reg(PCIB_BLOCK_ID, PCIB_SRIOV_NUM_VFS) & 0xFFFF0000));
+	/* SR-IOV disable (set initial, total and & num of VFs to zero) */
+	write_non_cluster_reg(PCIB_BLOCK_ID, PCIB_SRIOV_TOTAL_AND_INITIAL_VFS, 0x0);
+	write_non_cluster_reg(PCIB_BLOCK_ID, PCIB_SRIOV_NUM_VFS, (read_non_cluster_reg(PCIB_BLOCK_ID, PCIB_SRIOV_NUM_VFS) & 0xFFFF0000));
 
 #ifndef CONFIG_TARGET_NPS_SOC
 /* changes came from qemu simulation. real chip works without it */
-		/* BAR4 */
-		bar.value = read_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_4_BASE_ADDR_OFFSET));
-		bar.locatable = 1;
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_4_BASE_ADDR_OFFSET), bar.value);
-		/* BAR5 */
-		bar.value = read_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_5_BASE_ADDR_OFFSET));
-		bar.locatable = 1;
-		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_5_BASE_ADDR_OFFSET), bar.value);
+	/* BAR4 */
+	bar.value = read_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_4_BASE_ADDR_OFFSET));
+	bar.locatable = 1;
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_4_BASE_ADDR_OFFSET), bar.value);
+	/* BAR5 */
+	bar.value = read_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_5_BASE_ADDR_OFFSET));
+	bar.locatable = 1;
+	write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_BAR_5_BASE_ADDR_OFFSET), bar.value);
 #endif
-	}
 
 #ifdef CONFIG_TARGET_NPS_SOC
-	   /* disable unused physical functions */
-	   for (i = pci_pfs; i < NUM_PFS; i++) {
-			   /* Choose physical function */
-			   set_dbi_pf(i);
-			   /* Configuration space header */
-			   spl_print(" [disabled PF%d] ", i);
-			   write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_VENDOR_ID_OFFSET), 0xffffffff);
-	   }
+	/* disable unused physical functions */
+	for (i = PCI_PFS; i < NUM_PFS; i++) {
+		/* Choose physical function */
+		set_dbi_pf(i);
+		/* Configuration space header */
+		spl_print("     [disabled PF%d]\n", i);
+		write_non_cluster_reg(PCIB_BLOCK_ID, CS_OFFSET_TO_ADDR(CS_VENDOR_ID_OFFSET), 0xffffffff);
+	}
 #endif
 
 	set_dbi_pf(0);
-}
-
-/* do_rom_crc_check() - Check ROM CRC
- *
- * Register on SERDES interrupt #60, read command
- */
-static int do_rom_crc_check(void)
-{
-	int ret_val, i;
-
-	for (i = 0; i < pci_lanes; i++) {
-		ret_val = serdes_execute_interrupt(SERDES_WEST_BLOCK_ID, pci_serdes[i], SERDES_INT_CODE_CRC, SERDES_INT_DATA_CRC, 0x0);
-		if (ret_val)
-			return 1;
-	}
-
-	return 0;
 }
 
 /* dl_sbus_master_firmware() - Download SBus Master firmware image (Burst Download)
@@ -487,20 +576,6 @@ error:
 	return 1;
 }
 
-/* do_sbus_master_imem_crc_check() - Check SBus Master memory CRC
- *
- */
-static int do_sbus_master_imem_crc_check(void)
-{
-	int ret_val;
-
-	ret_val = sbus_master_execute_interrupt(SERDES_WEST_BLOCK_ID, SBUS_MASTER_INT_CODE_IMEM_CRC, SBUS_MASTER_INT_DATA_CRC, SBUS_MASTER_INT_SUCCESS);
-	if (ret_val)
-		return 1;
-
-	return 0;
-}
-
 /* sbus_master_dmem_upload() - Upload code to SBus Master dmem
  */
 static int sbus_master_dmem_upload(unsigned int serdes_block_id, unsigned int start_addr, unsigned int dmem_ucode[], unsigned int ucode_size)
@@ -562,55 +637,6 @@ static int dl_xdmem_full_pcie_firmware(void)
 error:
 	printf("dl_xdmem_full_pcie_firmware: failed to write!\n");
 	return 1;
-}
-
-/* do_sbus_master_dmem_crc_check() - Check SBus Master XDMEM CRC
- *
- */
-static int do_sbus_master_dmem_crc_check(void)
-{
-	int ret_val;
-
-	ret_val = sbus_master_execute_interrupt(SERDES_WEST_BLOCK_ID, SBUS_MASTER_INT_CODE_DMEM_CRC, SBUS_MASTER_INT_DATA_CRC, SBUS_MASTER_INT_SUCCESS);
-	if (ret_val)
-		return 1;
-
-	return 0;
-}
-
-/* pcie_firmware_swap() - PCIe firmware swap
- */
-static int pcie_firmware_swap(void)
-{
-	int ret_val, i;
-
-	/* PCI PCS reset */
-	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_PCS_RST_N, SERDES_PCIE_PCS_ASSERT);
-
-	/* Issue interrupt #40 for PCI SERDES */
-	for (i = 0; i < pci_lanes; i++) {
-		ret_val = sbus_master_execute_interrupt(SERDES_WEST_BLOCK_ID, SBUS_MASTER_INT_CODE_FIRMWARE_SWAP, pci_serdes[i], SBUS_MASTER_INT_SUCCESS);
-		if (ret_val)
-			return 1;
-	}
-
-	return 0;
-}
-
-/* do_serdes_firmware_check() - CHeck PCIe GEN3 SERDES firmware version
- *
- */
-static int do_serdes_firmware_check(void)
-{
-	int ret_val, i;
-
-	for (i = 0; i < pci_lanes; i++) {
-		ret_val = serdes_execute_interrupt(SERDES_WEST_BLOCK_ID, pci_serdes[i], SERDES_INT_CODE_FIRMWARE, SERDES_INT_DATA_FIRMWARE, SERDES_GEN3_FIRMWARE_VERSION);
-		if (ret_val)
-			return 1;
-	}
-
-	return 0;
 }
 
 static int fixed_dfe_settings(void)
@@ -681,42 +707,25 @@ static int equalization_setup(void)
 	return 0;
 }
 
-#ifdef FORCE_X1
-static int multilane_x1_only(void)
-{
-	int ret_val, i;
-
-	if (pci_lanes != PCI_LANES_X8)
-		return 0;
-
-	for (i = 1; i < PCI_LANES_X8; i++) {
-		ret_val = serdes_execute_interrupt(SERDES_WEST_BLOCK_ID, pci_serdes[i], 0x1, 0x0, 0x1);
-		if (ret_val)
-			return 1;
-	}
-
-	return 0;
-}
-#endif
-
 /* setup_pci_link() - Setup pcie link
  */
 int setup_pci_link(void)
 {
 	int err;
-	unsigned int ref_select, pcie_bypass, pcie_modes;
-	volatile int delay = 5000;
 
-	err = update_pci_settings(&ref_select, &pcie_bypass, &pcie_modes);
+	err = get_pci_gen();
 	if (err)
 		goto error;
+
+	printf("SPL: Setting up PCI x%d [GEN%d] with %d PFs\n", PCI_LANES,
+		pci_gen, PCI_PFS);
 
 	/* Set DBI rgr timeout (HW bug fix. Should be fixed on phase2) */
 	spl_print("SPL: Set DBI RGR timeout to 0x2000... ");
 	write_non_cluster_reg(PCIB_BLOCK_ID, RGR_TIMEOUT_CNTR, 0x2000);
 	spl_print("Done\n");
 
-	/* Enable physical functions access to configuration space to prevent
+	/* Enable physical function access to configuration space to prevent
 	 * a deadlock when accessing sync registers
 	 * (HW bug fix. Should be fixed on phase2) */
 	spl_print("SPL: Enable PF access to configuration space... ");
@@ -724,13 +733,15 @@ int setup_pci_link(void)
 	spl_print("Done\n");
 
 	/* Set PCI ref clock */
-	spl_print("SPL: Set PCI ref clock for lanes (0x%x)... ", ref_select);
-	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_REF_SELECT_1, ref_select);
+	spl_print("SPL: Set PCI ref clock for lanes (0x%x)... ", REF_SELECT);
+	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_REF_SELECT_1, REF_SELECT);
 	spl_print("Done\n");
 
 	/* Set PCI bypass for unused lanes */
-	spl_print("SPL: Set PCI bypass (0x%x)... ", pcie_bypass);
-	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_BYPASS, pcie_bypass);
+	spl_print("SPL: Set PCI bypass (0x%x)... ", PCIE_BYPASS);
+	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_BYPASS, PCIE_BYPASS);
+	/* Disable east side pci lanes */
+	write_non_cluster_reg(SERDES_EAST_BLOCK_ID, SERDES_REG_PCIE_BYPASS, DISABLE_ALL_PCI_LANES);
 	spl_print("Done\n");
 
 	/* Wait for ROM enable to finish */
@@ -757,31 +768,20 @@ int setup_pci_link(void)
 			goto error;
 		spl_print("Done\n");
 
-		spl_print("SPL: Check SBus master imem CRC... ");
-		err = do_sbus_master_imem_crc_check();
-		if (err)
-			goto error;
-		spl_print("Done\n");
-
-		/* Download of the PCIe firmware requires
-		 * a delay.
-		 */
-		while(delay-- > 0);
-
 		spl_print("SPL: Download full-featured PCIe firmware... ");
 		err = dl_xdmem_full_pcie_firmware();
 		if (err)
 			goto error;
 		spl_print("Done\n");
 
-		spl_print("SPL: Check SBust master xdmem CRC... ");
-		err = do_sbus_master_dmem_crc_check();
-		if (err)
-			goto error;
-		spl_print("Done\n");
-
 		spl_print("SPL: Swapping PCIe firmware... ");
-		err = pcie_firmware_swap();
+		/* PCI PCS reset */
+		write_non_cluster_reg(SERDES_WEST_BLOCK_ID,
+			SERDES_REG_PCIE_PCS_RST_N, SERDES_PCIE_PCS_ASSERT);
+		/* Issue interrupt #40 for PCI SERDES */
+		err = sbus_master_execute_interrupt(SERDES_WEST_BLOCK_ID,
+			SBUS_MASTER_INT_CODE_FIRMWARE_SWAP, SBUS_RCVR_SERDES_48,
+			SBUS_MASTER_INT_SUCCESS);
 		if (err)
 			goto error;
 		spl_print("Done\n");
@@ -807,22 +807,38 @@ int setup_pci_link(void)
 	if (pci_gen > PCI_GEN1) {
 		/*  Check PCIe SERDES firmware version (GEN3) */
 		spl_print("SPL: Check PCIe SERDES firmware version... ");
-		err = do_serdes_firmware_check();
+		err = serdes_execute_interrupt(SERDES_WEST_BLOCK_ID,
+			SBUS_RCVR_SERDES_48, SERDES_INT_CODE_FIRMWARE,
+			SERDES_INT_DATA_FIRMWARE, SERDES_GEN3_FIRMWARE_VERSION);
+		if (err)
+			goto error;
+		spl_print("Done\n");
+
+		spl_print("SPL: Check SBus master imem CRC... ");
+		err = sbus_master_execute_interrupt(SERDES_WEST_BLOCK_ID,
+			SBUS_MASTER_INT_CODE_IMEM_CRC, SBUS_MASTER_INT_DATA_CRC,
+			SBUS_MASTER_INT_SUCCESS);
+		if (err)
+			goto error;
+		spl_print("Done\n");
+
+		spl_print("SPL: Check SBust master xdmem CRC... ");
+		err = sbus_master_execute_interrupt(SERDES_WEST_BLOCK_ID,
+			SBUS_MASTER_INT_CODE_DMEM_CRC, SBUS_MASTER_INT_DATA_CRC,
+			SBUS_MASTER_INT_SUCCESS);
 		if (err)
 			goto error;
 		spl_print("Done\n");
 	}
 
-#ifdef FORCE_X1
-	/* Force X1 in X8 mode. Disable SERDES 41-47 */
-	spl_print("SPL: Disable SERDES 41-47... ");
-	multilane_x1_only();
-	spl_print("Done\n");
-#endif
-
-	/*  ROM CRC check */
+	/*
+	 * ROM CRC check
+	 * Register on SERDES interrupt #60, read command
+	 */
 	spl_print("SPL: Check ROM CRC... ");
-	err = do_rom_crc_check();
+	err = serdes_execute_interrupt(SERDES_WEST_BLOCK_ID,
+		SBUS_RCVR_SERDES_48, SERDES_INT_CODE_CRC, SERDES_INT_DATA_CRC,
+		0x0);
 	if (err)
 		goto error;
 	spl_print("Done\n");
@@ -837,8 +853,10 @@ int setup_pci_link(void)
 	}
 
 	/* Set PCI lanes */
-	spl_print("SPL: Set PCI modes (0x%x)... ", pcie_modes);
-	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_MODES, pcie_modes);
+	spl_print("SPL: Set PCI modes (0x%x)... ", PCIE_MODES);
+	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_MODES, PCIE_MODES);
+	/* On east side 0 lanes are allocated for PCI */
+	write_non_cluster_reg(SERDES_EAST_BLOCK_ID, SERDES_REG_PCIE_MODES, SERDES_PCIE_DISABLE);
 	spl_print("Done\n");
 
 	/* Limit MAC */
@@ -869,8 +887,8 @@ int setup_pci_link(void)
 	spl_print("Done\n");
 #endif
 
-	/* Update physical functions configuration space */
-	spl_print("SPL: Update physical functions configuration space... ");
+	/* Update configuration space */
+	spl_print("SPL: Update configuration space... ");
 	update_cs();
 	spl_print("Done\n");
 

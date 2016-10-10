@@ -181,8 +181,7 @@ unsigned long get_board_sys_clk(void);
  * Environment information
  */
 #define CONFIG_BOOTARGS		"earlycon=uart8250,mmio32be,0xf7209000,115200n8 "	\
-				"console=ttyS0,115200n8 " 				\
-				"rcupdate.rcu_cpu_stall_suppress=1"
+				"console=ttyS0,115200n8 slub_max_order=0"
 #define CONFIG_BOOTCOMMAND	"run ramboot"
 #define CONFIG_RAMBOOTCOMMAND	"sf probe 0 && "					\
 				"sf read ${fdtaddr} ${dtb_flash_offs} ${dtb_size} && "	\
@@ -195,13 +194,15 @@ unsigned long get_board_sys_clk(void);
 				"run addip addmisc && "					\
 				"bootm ${loadaddr} - ${fdtaddr}"
 #define CONFIG_EXTRA_ENV_SETTINGS						\
-	"pci_config=gen1,x1,pfs1\0"						\
+	"pci_gen=3\0"								\
 	"verify=yes\0"								\
 	"ddr_freq=1200\0"							\
 	"ddr_package=x8\0"							\
 	"ddr_type=DDR4\0"							\
 	"ddr_debug=0\0"								\
-	"ddr_vref_bypass=0\0"							\
+	"ddr_vref_bypass=1\0"							\
+	"ddr_skip_bist=0\0"							\
+	"ddr_skip_init=0\0"							\
 	"phy_rd_vref=850\0"							\
 	"fdt_high=0xffffffff\0"							\
 	"fdtaddr=" __stringify(CONFIG_NPS_DTB_EMEM_ADDR) "\0"			\
@@ -222,7 +223,7 @@ unsigned long get_board_sys_clk(void);
 	"addip=setenv bootargs ${bootargs} " 					\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:" 			\
 		"${netmask}:${hostname}:eth0:off\0"				\
-	"addmisc=setenv bootargs ${bootargs} ${krn_args}\0"			\
+	"addmisc=setenv bootargs ${bootargs} ${extra_bootargs}\0"			\
 	"btlup=tftpboot ${loadaddr} ${btl_file} &&"				\
 		"sf probe 0 && "						\
 		"sf erase ${btl_flash_offs} +${filesize} && "			\

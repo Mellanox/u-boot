@@ -96,7 +96,10 @@ static struct bist_parameters bist_configs[BIST_NUM_OF_PATTERNS] = {
 	{0x0, BIST_PATTERN_5_SIZE, NULL, SINGLE, WRITE_COMPARE, 0x0, (1<<30),
 		{{0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF},
 		{0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF} } },
-	{0x0, BIST_PATTERN_6_SIZE, NULL, SINGLE, WRITE_ONLY, 0x0, (1<<30),
+	{0x0, BIST_PATTERN_6_SIZE, NULL, SINGLE, WRITE_COMPARE, 0x0, (1<<30),
+		{{0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF},
+		{0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF} } },
+	{0x0, BIST_PATTERN_7_SIZE, NULL, SINGLE, WRITE_COMPARE, 0x0, (1<<30),
 		{{0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF},
 		{0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF}, {0xF} } },
 };
@@ -133,6 +136,7 @@ static void show_configurations(u32 type)
 	patterns[index++] = bist_pattern_4;
 	patterns[index++] = bist_pattern_5;
 	patterns[index++] = bist_pattern_6;
+	patterns[index++] = bist_pattern_7;
 
 	printf("Bist configuration #%d:\n", type);
 	switch (bist_configs[type].rep_mode) {
@@ -1129,6 +1133,7 @@ int do_ddr_bist(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	patterns[index++] = bist_pattern_4;
 	patterns[index++] = bist_pattern_5;
 	patterns[index++] = bist_pattern_6;
+	patterns[index++] = bist_pattern_7;
 
 	if (strcmp(argv[1], "show") == 0) {
 		type = simple_strtol(argv[2], NULL, 10);
@@ -1150,6 +1155,10 @@ int do_ddr_bist(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				return -1;
 			}
 			seed = simple_strtol(argv[4], NULL, 10);
+			if (seed == 0) {
+				error("0 is an Invalid seed number");
+				return -1;
+			}
 			srand(seed);
 			for (index = 0; index < BIST_MAX_PATTERN_SIZE; index++)
 				rand_pattern[index] = rand() & 0xFF;
@@ -1370,6 +1379,7 @@ static int bist_loop(u32 mc_mask, u32 iterations)
 	patterns[index++] = bist_pattern_4;
 	patterns[index++] = bist_pattern_5;
 	patterns[index++] = bist_pattern_6;
+	patterns[index++] = bist_pattern_7;
 
 	memzero((void *)loop_results, sizeof(loop_results));
 

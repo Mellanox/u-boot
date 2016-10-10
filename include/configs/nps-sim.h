@@ -166,7 +166,7 @@
 	"addip=setenv bootargs ${bootargs} " 			\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:" 	\
 		"${netmask}:${hostname}:eth0:off\0"		\
-	"addmisc=setenv bootargs ${bootargs} ${krn_args}\0"
+	"addmisc=setenv bootargs ${bootargs} ${extra_bootargs}\0"
 
 /* SPL defines */
 #define CONFIG_SPL_LDSCRIPT	"board/ezchip/nps/nps-sim_spl/u-boot-spl.lds"

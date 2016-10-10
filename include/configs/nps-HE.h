@@ -147,8 +147,8 @@
 #define CONFIG_EXTRA_ENV_SETTINGS				\
 	"verify=no\0"						\
 	"machid=270f0034\0"					\
-	"krn_args=\0"						\
-	"miscargs=setenv bootargs ${bootargs} ${krn_args}\0"	\
+	"extra_bootargs=\0"						\
+	"miscargs=setenv bootargs ${bootargs} ${extra_bootargs}\0"	\
 	"loadaddr=0x80001fc0\0"					\
 	"fdt_high=0xffffffff\0"					\
 	"fdtaddr=0x80e00000\0"					\

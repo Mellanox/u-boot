@@ -829,12 +829,14 @@ static void configure_mc(void)
 	if (IS_16X_EXT_MEM_DEVICE(current_ddr_params.type) ||
 		(!IS_DDR4_DEVICE(current_ddr_params.type)
 			&& density == (8 << 10)/*8Gbit*/)) {
-		if (IS_DDR3_LOW_GROUP(sbin) || IS_DDR4_LOW_GROUP(sbin))
+		if (IS_DDR3_LOW_GROUP(sbin, current_ddr_params.type))
 			sync1.fields.a_phase_cfg_th = 2;
 		else
 			sync1.fields.a_phase_cfg_th = 3;
 	} else {
-		if (IS_DDR3_LOW_GROUP(sbin) || IS_DDR4_LOW_GROUP(sbin))
+		if (((!IS_DDR3_LOW_GROUP(sbin, current_ddr_params.type)) &&
+				(!IS_DDR4_DEVICE(current_ddr_params.type))) ||
+			(IS_DDR4_LOW_GROUP(sbin, current_ddr_params.type)))
 			sync1.fields.a_phase_cfg_th = 2;
 		else
 			sync1.fields.a_phase_cfg_th = 1;
@@ -2621,6 +2623,8 @@ static int vref_training(void)
 	saved_mr6 = mr6.reg;
 
 	for (ifc = 0; ifc < EMEM_MC_NUM_OF_BLOCKS; ifc++) {
+		if(SKIP_IFC(ifc))
+			continue;
 		mr6.reg = saved_mr6;
 		dtcr0.reg = emem_mc_indirect_reg_read_synop(
 				emem_mc_block_id[ifc], PUB_DTCR0_REG_ADDR);
@@ -3924,18 +3928,21 @@ int configure_emem(void)
 		return -1;
 	}
 	enable_ddr();
-	status = run_default_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS));
-	if(status) {
-		set_err_indication(BIST_FAILED);
-		error("Default bist run failed");
-		return -1;
+	if(!getenv_yesno("ddr_skip_bist")) {
+		status = run_default_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS));
+		if(status) {
+			set_err_indication(BIST_FAILED);
+			error("Default bist run failed");
+			return -1;
+		}
 	}
-
-	status = init_ddr_by_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS));
-	if(status) {
-		set_err_indication(BIST_FAILED);
-		error("Default bist run failed");
-		return -1;
+        if(!getenv_yesno("ddr_skip_init")) {
+		status = init_ddr_by_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS));
+		if(status) {
+			set_err_indication(BIST_FAILED);
+			error("Default bist run failed");
+			return -1;
+		}
 	}
 	clients_config();
 	set_err_indication(NO_ERROR);
