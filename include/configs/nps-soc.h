@@ -218,7 +218,7 @@ unsigned long get_board_sys_clk(void);
 	"btl_file=btl.bin\0"							\
 	"uboot_file=u-boot.bin\0"						\
 	"krn_file=uImage\0"							\
-	"dtb_file=eznps_soc.dtb\0"						\
+	"dtb_file=nps_soc.dtb\0"						\
 	"bist_cfg_file=bist_config.cfg\0"					\
 	"addip=setenv bootargs ${bootargs} " 					\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:" 			\
