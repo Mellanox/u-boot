@@ -147,6 +147,7 @@ void spl_print(const char* s);
 #define PCIB_GEN2_CTRL_REG							CS_OFFSET_TO_ADDR(0x80C)
 #define PCIB_LINK_CONTROL2_REG						CS_OFFSET_TO_ADDR(0xA0)
 #define PCIB_LINK_CAPABILITIES_REG					CS_OFFSET_TO_ADDR(0x7C)
+#define PCIB_LINK_STATUS_REG						CS_OFFSET_TO_ADDR(0x80)
 #define PCIB_LINK_CONTROL2_TARGET_LINK_SPEED		0x0000000F
 #define PCIB_LINK_CONTROL2_TARGET_LINK_SPEED_GEN1	0x1
 #define PCIB_LINK_CONTROL2_TARGET_LINK_SPEED_GEN2	0x2
@@ -265,6 +266,25 @@ struct pci_bar {
 			prefetchable		: 1,
 			locatable			: 2,
 			region_type			: 1;
+		};
+		u32 value;
+	};
+};
+
+/*
+ * The link status register is a part of the PCI Express capability structure,
+ * which has valuable information regarding the PCI link that was established,
+ * such as the current link speed:
+ * 	- 1 for gen1 (2.5GT/s)
+ * 	- 2 for gen2 (5GT/s)
+ * 	- 3 for gen3 (8GT/s)
+ */
+struct link_status {
+	union {
+		struct {
+			u32 link_status_information	: 12,
+			current_link_speed		: 4,
+			link_control_information	: 16;
 		};
 		u32 value;
 	};

@@ -717,8 +717,8 @@ int setup_pci_link(void)
 	if (err)
 		goto error;
 
-	printf("SPL: Setting up PCI x%d [GEN%d] with %d PFs\n", PCI_LANES,
-		pci_gen, PCI_PFS);
+	printf("SPL: Setting up PCI x%d [REQUESTED GEN%d] with %d PFs\n",
+		PCI_LANES, pci_gen, PCI_PFS);
 
 	/* Set DBI rgr timeout (HW bug fix. Should be fixed on phase2) */
 	spl_print("SPL: Set DBI RGR timeout to 0x2000... ");

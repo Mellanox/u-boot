@@ -48,8 +48,13 @@ void board_init_f(ulong dummy)
 	err = setup_pci_link();
 	if (err)
 		printf("SPL: PCI link failed!\n");
-	else
-		printf("SPL: PCI link is up!\n");
+	else {
+		struct link_status link_status =
+			{ .value = read_non_cluster_reg(PCIB_BLOCK_ID,
+					PCIB_LINK_STATUS_REG) };
+
+		printf("SPL: PCI link is up with gen %d!\n", link_status.current_link_speed);
+	}
 	spl_flash_to_mem(CONFIG_NPS_UBOOT_FLASH_OFFS, (void *)CONFIG_SYS_TEXT_BASE, CONFIG_NPS_UBOOT_SIZE);
 	jump_to_uboot();
 }
