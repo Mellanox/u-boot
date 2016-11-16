@@ -46,7 +46,7 @@ void spl_print(const char* s);
 #define spl_print(...)
 #endif
 
-#define POLL_LINK_STATUS_RETRIES	50000000
+#define POLLING_RETRIES	50000000
 #define UBOOT_ENV_SIZE_TO_READ 3000
 
 /* PCI lanes */

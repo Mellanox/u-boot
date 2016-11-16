@@ -209,25 +209,37 @@ static int do_poll_link_status(void)
 {
 	unsigned int i;
 	int err_res;
+	struct link_status link_status;
 
 	err_res = read_non_cluster_reg(CFGB_WEST_BLOCK_ID, CFGB_REG_ERR_RES);
 	if (err_res)
 		printf("do_poll_link_status: warning! ERR_RES bit is ON (before polling)\n");
 
-	for (i = 0; i < POLL_LINK_STATUS_RETRIES; i++)
+	/* Making sure we're polling the link status register in the PEXC block
+	 * with link speed that's matching to the requested pci gen, by polling
+	 * the pci gen first, to avoid cases where the change of it will trigger
+	 * an error response due to an unsynchronized read from the PEXC block
+	 * (pci gen will only change if we requested one larger than 1)
+	 */
+	if (pci_gen > 1) {
+		for (i = 0; i < POLLING_RETRIES; i++) {
+			link_status.value = read_non_cluster_reg(PCIB_BLOCK_ID, PCIB_LINK_STATUS_REG);
+			if (link_status.current_link_speed == pci_gen)
+				break;
+		}
+		spl_print(" [%d retries for polling pci gen] ", i);
+	}
+
+	for (i = 0; i < POLLING_RETRIES; i++)
 		if ((read_non_cluster_reg(PEXC_BLOCK_ID, LINK_STATUS_PEXC) & LINK_STATUS_UP) == LINK_STATUS_UP)
 			break;
-	spl_print(" [%d retries] ", i);
+	spl_print(" [%d retries for polling link status in pexc block] ", i);
 
 	err_res = read_non_cluster_reg(CFGB_WEST_BLOCK_ID, CFGB_REG_ERR_RES);
 	if (err_res)
 		printf("do_poll_link_status: warning! ERR_RES bit is ON (after polling)\n");
 
-	/* Sometimes during the polling ERR_RES occurs for unknown reason.
-	 * Since it doesn't effect the polling result, let's clear this bit. */
-//	write_non_cluster_reg(CFGB_WEST_BLOCK_ID, CFGB_REG_ERR_RES, 1);
-
-	if (i == POLL_LINK_STATUS_RETRIES) {
+	if (i == POLLING_RETRIES) {
 		printf("do_poll_link_status: timeout\n");
 		return 1;
 	}
