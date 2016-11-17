@@ -82,6 +82,7 @@
 #define CRG_SYS_PLL_FREQ_700M		0x3
 #define CRG_SYS_PLL_FREQ_650M		0x2
 #define CRG_SYS_PLL_FREQ_400M		0x1
+#define CRG_REG_BIST_STATUS		0x28E
 
 /* NPC_CRG block */
 #define NPC_CRG_BLOCK_ID		0x38
@@ -90,8 +91,18 @@
 void configure_l2c(void);
 void configure_mtm(void);
 void configure_ciu(void);
+void check_mbist_result(void);
 unsigned long get_board_sys_clk(void);
 int get_l2c_block_id(int block_id);
+
+union crg_bist_status {
+	u32 reg;
+	struct {
+		u32 reserved:30;
+		u32 sfp_fail:1;
+		u32 sfp_ready:1;
+	} fields;
+};
 
 union ms_dfn_data_0 {
 	u32 reg;

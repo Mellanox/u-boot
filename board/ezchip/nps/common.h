@@ -179,7 +179,9 @@ enum	emem_mc_cached {
 union  crg_gen_purp_0 {
 	u32 reg;
 	struct {
-		u32 reserved12_31:20;
+		u32 reserved14_31:18;
+		u32 mbist_failed:1;
+		u32 mbist_not_finished:1;
 		u32 ddr_error:4;
 		u32 reserved1_7:7;
 		u32 sync_bit:1;

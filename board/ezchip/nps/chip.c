@@ -149,3 +149,36 @@ void configure_ciu(void)
 				glb_msid_cfg_2);
 		}
 }
+
+/* Mbist is automatically activated by HW at powerup
+ * this function checks the result and print an error
+ * message in case of failure. */
+
+void check_mbist_result(void)
+{
+	u32 	retries = 25, i;
+	union	crg_bist_status	bist_status;
+	union	crg_gen_purp_0 gen_purp_0;
+
+	bist_status.reg = 0;
+	bist_status.reg = read_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_BIST_STATUS);
+
+	for (i = 0 ; i < retries; i++) {
+		if (bist_status.fields.sfp_ready == 1) {
+			if (bist_status.fields.sfp_fail == 1) {
+		                gen_purp_0.reg = read_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_0);
+                		gen_purp_0.fields.mbist_failed = 1;
+		                write_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_0, gen_purp_0.reg);
+				error("Error: Internal memory bist failed");
+			}
+			break;
+		}
+		udelay(100);
+	}
+	if (i == retries) {
+		gen_purp_0.reg = read_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_0);
+		gen_purp_0.fields.mbist_not_finished = 1;
+        	write_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_0, gen_purp_0.reg);
+		error("Error: Internal memory bist did not end after timeout");
+	}
+}

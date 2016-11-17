@@ -160,6 +160,7 @@ int board_late_init(void)
 	configure_l2c();
 	configure_ciu();
 	configure_mtm();
+	check_mbist_result();
 
 #ifdef CONFIG_TARGET_NPS_SIM
 	/* Copy kernel from flash to external memory */
