@@ -17,7 +17,6 @@
 #define REG_UART_FCR             (* ( (volatile int*)(UART_BASE+0x00000008) ) )
 #define REG_UART_LCR             (* ( (volatile int*)(UART_BASE+0x0000000C) ) )
 #define REG_UART_LSR             (* ( (volatile int*)(UART_BASE+0x00000014) ) )
-#define REG_UART_CTR             (* ( (volatile int*)(UART_BASE+0x000000FC) ) )
 
 #define SSI_BASE        0xC0001000
 
@@ -26,23 +25,11 @@
 
 #define CS_FLASH_OVER        0x01
 
-#define PAGE_SIZE               256
-#define SECTOR_SIZE             0x00040000
-#define CMD_READ_ID			    0x9f
-
 #define CMD_READ_ARRAY_FAST		0x0b
-#define CMD_S25FLXX_WREN	    0x06	/* Write Enable */
-#define CMD_S25FLXX_RDSR	    0x05	/* Read Status Register */
-#define CMD_S25FLXX_PP		    0x02	/* Page Program */
-#define CMD_S25FLXX_SE		    0xd8	/* Sector Erase */
-
-
-#define SPANSION_SR_WIP		(1 << 0)	/* Write-in-Progress */
 
 /* SPI transfer flags */
 #define SPI_XFER_BEGIN	0x01			/* Assert CS before transfer */
 #define SPI_XFER_END	0x02			/* Deassert CS after transfer */
-
 
 //#define u32 unsigned int
 //#define u16 unsigned short int
@@ -62,12 +49,7 @@ struct ezspi_slave {
 };
 
 /* SR register defines */
-#define	EZSPI_SR_DCOL			EZBIT(6)
-#define	EZSPI_SR_TXE			EZBIT(5)
-#define	EZSPI_SR_RFF			EZBIT(4)
 #define	EZSPI_SR_RFNE			EZBIT(3)
-#define	EZSPI_SR_TFE			EZBIT(2)
-#define	EZSPI_SR_TFNF			EZBIT(1)
 #define	EZSPI_SR_BUSY			EZBIT(0)
 
 /* CTRLR0 register defines */
