@@ -530,23 +530,6 @@ struct gpr_setup {
 
 /*	registers	*/
 
-union crg_gen_purp_1 {
-	u32 reg;
-	struct {
-		u32 freq:12;
-		u32 size:17;
-		u32 type:3;
-	} fields;
-};
-
-union crg_gen_purp_2 {
-	u32 reg;
-	struct {
-		u32 reserved24_31:8;
-		u32 mc_mask:24;
-	} fields;
-};
-
 union crg_emi_rst {
 		u32 reg;
 		struct {

@@ -58,12 +58,6 @@
 
 #define SERDES_UCODE_SIZE			11962
 
-#ifdef CONFIG_NPS_DBG_LAN_WEST
-#define SERDES_BLOCK_ID		SERDES_WEST_BLOCK_ID
-#else
-#define SERDES_BLOCK_ID		SERDES_EAST_BLOCK_ID
-#endif
-
 #define DBG_LAN_WEST_BLOCK_ID	0x41c
 #define DBG_LAN_EAST_BLOCK_ID	0x51c
 #define DBG_LAN_IND_DATA	0x0
@@ -73,12 +67,6 @@
 #define DBG_LAN_IND_SRD_STS	0x81
 #define DBG_LAN_IND_STS_RDY	(1 << 0)
 #define DBG_LAN_IND_STS_SUCCESS	(1 << 1)
-#ifdef CONFIG_NPS_DBG_LAN_WEST
-#define DBG_LAN_BLOCK_ID	DBG_LAN_WEST_BLOCK_ID
-#else
-#define DBG_LAN_BLOCK_ID	DBG_LAN_EAST_BLOCK_ID
-#endif
-
 
 int nps_dbg_lan_serdes_init(void);
 

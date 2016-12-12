@@ -2,6 +2,12 @@
 #include <common.h>
 #include "common.h"
 #include "serdes.h"
+#include "chip.h"
+
+
+/* init dbg_lan to west side */
+static int dbg_lan_block_id = DBG_LAN_WEST_BLOCK_ID;
+static int serdes_block_id = SERDES_WEST_BLOCK_ID;
 
 /* rom version 1055_0041 */
 unsigned int serdes_ucode[SERDES_UCODE_SIZE] =
@@ -11977,7 +11983,7 @@ static int serdes_upload_ucode(void)
 
 	 /* Clr IGNORE_BROADCAST, BROADCAST_GROUP_1, BROADCAST_GROUP_2 */
 	data = (0x00FF0000 | (SERDES_NETIF_BROADCAST << 4));
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, data, SERDES_REG_BROADCAST_GROUP);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, data, SERDES_REG_BROADCAST_GROUP);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
@@ -11985,62 +11991,62 @@ static int serdes_upload_ucode(void)
 
 	/* Prepare SerDes for upload */
 	/* Set GLOBAL_RESET & SPICO_CLK_GATE_DISABLE */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0x11, SERDES_REG_GLOBAL_RESET);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0x11, SERDES_REG_GLOBAL_RESET);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
 	}
 
 	/* Clear GLOBAL_RESET */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0x10, SERDES_REG_GLOBAL_RESET);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0x10, SERDES_REG_GLOBAL_RESET);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
 	}
 
 	/* Set DISABLE_HDW_INTERRUPT, DISABLE_CORE_INTERRUPT */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0x30, SERDES_REG_DISABLE_INTERRUPTS);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0x30, SERDES_REG_DISABLE_INTERRUPTS);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
 	}
 
 	/* Set IMEM_CNTL_EN & IMEM_LOAD */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0x40000000, SERDES_REG_IMEM_CTRL);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0x40000000, SERDES_REG_IMEM_CTRL);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
 	}
 
 	/* Upload */
-	result = serdes_sbus_burst_upload(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_REG_IMEM_BURST_CTRL, serdes_ucode, SERDES_UCODE_SIZE);
+	result = serdes_sbus_burst_upload(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_REG_IMEM_BURST_CTRL, serdes_ucode, SERDES_UCODE_SIZE);
 	if (result)
 		return 1;
 
 	/* Start SerDes processor */
 	/* Clr IMEM_CNTL_EN */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0, SERDES_REG_IMEM_CTRL);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0, SERDES_REG_IMEM_CTRL);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
 	}
 
 	/* Set IMEM_ECC_ENAB and DMEM_ECC_ENAB */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0xC0000, SERDES_REG_ECC_CTRL);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0xC0000, SERDES_REG_ECC_CTRL);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
 	}
 
 	/* Set SPICO_ENABLE, Clr SPICO_CLK_GATE_DISABLE */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0x2, SERDES_REG_GLOBAL_RESET);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0x2, SERDES_REG_GLOBAL_RESET);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
 	}
 
 	/* Enable HDW and CORE interrupts */
-	result = serdes_sbus_write_cmd(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, 0x0, SERDES_REG_DISABLE_INTERRUPTS);
+	result = serdes_sbus_write_cmd(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, 0x0, SERDES_REG_DISABLE_INTERRUPTS);
 	if (result) {
 		printf("serdes_upload_ucode: failed to write!\n");
 		return 1;
@@ -12057,7 +12063,7 @@ static int serdes_set_tx_equlizer(void)
 	/* Attenuator */
 	data = (0x7 | (1 << 14));
 	expected_value = SERDES_INTERRUPT_CODE_TX_EQ_CONTROL;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_EQ_CONTROL, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_EQ_CONTROL, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_tx_equlizer: Attenuator failed!\n");
 		return 1;
@@ -12066,7 +12072,7 @@ static int serdes_set_tx_equlizer(void)
 	/* Precursor */
 	data = 5;
 	expected_value = SERDES_INTERRUPT_CODE_TX_EQ_CONTROL;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_EQ_CONTROL, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_EQ_CONTROL, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_tx_equlizer: Precursor failed!\n");
 		return 1;
@@ -12075,7 +12081,7 @@ static int serdes_set_tx_equlizer(void)
 	/* Postcursor */
 	data = (10 | (2 << 14));
 	expected_value = SERDES_INTERRUPT_CODE_TX_EQ_CONTROL;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_EQ_CONTROL, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_EQ_CONTROL, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_tx_equlizer: Postcursor failed!\n");
 		return 1;
@@ -12092,10 +12098,10 @@ static int serdes_wait_tx_rx_rdy(void)
 	for (i = 0 ; i < 10000; i++) {
 		ind_cmd = 0x8;
 		ind_cmd |= (1 << 8);
-		write_non_cluster_reg(DBG_LAN_BLOCK_ID, DBG_LAN_IND_ADDR, DBG_LAN_IND_SRD_STS);
-		write_non_cluster_reg(DBG_LAN_BLOCK_ID, DBG_LAN_IND_CMD, ind_cmd);
+		write_non_cluster_reg(dbg_lan_block_id, DBG_LAN_IND_ADDR, DBG_LAN_IND_SRD_STS);
+		write_non_cluster_reg(dbg_lan_block_id, DBG_LAN_IND_CMD, ind_cmd);
 		for (j = 0 ; j < SERDES_STATUS_REG_RETRY_NUM; j++) {
-			data = read_non_cluster_reg(DBG_LAN_BLOCK_ID, DBG_LAN_IND_STS);
+			data = read_non_cluster_reg(dbg_lan_block_id, DBG_LAN_IND_STS);
 #ifdef CONFIG_TARGET_NPS_SOC
 			if (data & DBG_LAN_IND_STS_RDY)
 				break;
@@ -12116,7 +12122,7 @@ static int serdes_wait_tx_rx_rdy(void)
 			return 1;
 		}
 
-		data = read_non_cluster_reg(DBG_LAN_BLOCK_ID, DBG_LAN_IND_DATA);
+		data = read_non_cluster_reg(dbg_lan_block_id, DBG_LAN_IND_DATA);
 		if ((data & 0x3) == 0x3) {
 			break;
 		}
@@ -12154,7 +12160,7 @@ static int serdes_set_dfe(void)
 	/* Column selection from Table 9 */
 	data |= 0x2000;
 	expected_value = 60;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_dfe: interrupt failed!\n");
 		return 1;
@@ -12166,7 +12172,7 @@ static int serdes_set_dfe(void)
 	/* Column selection from Table 9 */
 	data |= 0x2000;
 	expected_value = 15;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_dfe: interrupt failed!\n");
 		return 1;
@@ -12176,7 +12182,7 @@ static int serdes_set_dfe(void)
 	/* Column selection from Table 9 */
 	data |= 0x2000;
 	expected_value = 10;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_dfe: interrupt failed!\n");
 		return 1;
@@ -12188,7 +12194,7 @@ static int serdes_set_dfe(void)
 	/* Column selection from Table 9 */
 	data |= 0x2000;
 	expected_value = 11;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_SET_DFE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_dfe: interrupt failed!\n");
 		return 1;
@@ -12215,7 +12221,7 @@ static int serdes_set_dfe(void)
 	*/
 	data = 0x780;
 	expected_value = SERDES_INTERRUPT_CODE_DFE_CONTROL;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_DFE_CONTROL, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_DFE_CONTROL, data, expected_value);
 	if (ret_val) {
 		printf("serdes_set_dfe: interrupt failed!\n");
 		return 1;
@@ -12232,7 +12238,7 @@ static int serdes_power_up(void)
 	/* Check CRC */
 	data = 0;
 	expected_value = 0;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_CRC, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_CRC, data, expected_value);
 	if (ret_val) {
 		printf("serdes_power_up: check serdes CRC failed!\n");
 		return 1;
@@ -12241,7 +12247,7 @@ static int serdes_power_up(void)
 	/* Tx Bit rate */
 	data = 8;
 	expected_value = SERDES_INTERRUPT_CODE_TX_BITRATE;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_BITRATE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_TX_BITRATE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_power_up: set Tx bit rate failed!\n");
 		return 1;
@@ -12250,7 +12256,7 @@ static int serdes_power_up(void)
 	/* Rx Bit rate */
 	data = 8;
 	expected_value = SERDES_INTERRUPT_CODE_RX_BITRATE;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_RX_BITRATE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_RX_BITRATE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_power_up: set Rx bit rate failed!\n");
 		return 1;
@@ -12259,7 +12265,7 @@ static int serdes_power_up(void)
 	/* Data width */
 	data = 0;
 	expected_value = SERDES_INTERRUPT_CODE_WIDTH_MODE;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_WIDTH_MODE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_WIDTH_MODE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_power_up: set Data width for Rx and Tx failed!\n");
 		return 1;
@@ -12275,7 +12281,7 @@ static int serdes_power_up(void)
 	/* Turn the Serdes Rx and Tx on */
 	data = 0x7;
 	expected_value = SERDES_INTERRUPT_CODE_ENABLE;
-	ret_val = serdes_execute_interrupt(SERDES_BLOCK_ID, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_ENABLE, data, expected_value);
+	ret_val = serdes_execute_interrupt(serdes_block_id, SERDES_SBUS_RECEIVER_SERDES_49, SERDES_INTERRUPT_CODE_ENABLE, data, expected_value);
 	if (ret_val) {
 		printf("serdes_power_up: Enabling Rx and Tx failed!\n");
 		return 1;
@@ -12297,10 +12303,20 @@ static int serdes_power_up(void)
 	return 0;
 }
 
+static void inline get_eth_config(void)
+{
+       if(is_east_dgb_lan()) {
+               dbg_lan_block_id  = DBG_LAN_EAST_BLOCK_ID;
+               serdes_block_id = SERDES_EAST_BLOCK_ID;
+       }
+}
+
+
 int nps_dbg_lan_serdes_init(void)
 {
 	int ret_val;
 
+	get_eth_config();
 	ret_val = serdes_upload_ucode();
 	if (ret_val) {
 		printf("serdes upload ucode failed!\n");

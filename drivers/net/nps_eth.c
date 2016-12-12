@@ -10,7 +10,6 @@
 #include "nps_eth.h"
 #include <asm/arcregs.h>
 
-
 static int nps_eth_init(struct eth_device *dev, bd_t *bd)
 {
 	struct nps_eth_priv *priv = dev->priv;
@@ -210,10 +209,11 @@ int nps_eth_initialize(void)
 	struct eth_device *dev;
 	struct nps_eth_priv *priv;
 
+	dbg_lan_base = is_east_dgb_lan() ? 
+		NPS_ETH_EAST_DBG_LAN_BLOCK_ADDR:NPS_ETH_WEST_DBG_LAN_BLOCK_ADDR;
 	dev = (struct eth_device *)malloc(sizeof(*dev));
 	if (!dev)
 		return 0;
-
 	priv = (struct nps_eth_priv *)malloc(sizeof(*priv));
 	if (!priv) {
 		free(dev);

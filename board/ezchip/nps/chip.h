@@ -86,6 +86,36 @@ void check_mbist_result(void);
 unsigned long get_board_sys_clk(void);
 int get_l2c_block_id(int block_id);
 
+union  crg_gen_purp_0 {
+        u32 reg;
+        struct {
+                u32 reserved14_31:18;
+                u32 mbist_failed:1;
+                u32 mbist_not_finished:1;
+                u32 ddr_error:4;
+                u32 reserved1_7:7;
+                u32 sync_bit:1;
+        } fields;
+};
+
+union crg_gen_purp_1 {
+        u32 reg;
+        struct {
+                u32 freq:12;
+                u32 size:17;
+                u32 type:3;
+        } fields;
+};
+
+union crg_gen_purp_2 {
+        u32 reg;
+        struct {
+		u32 reserved25_31:7;
+		u32 dbg_lan_side:1;
+		u32 mc_mask:24;
+        } fields;
+};
+
 union crg_bist_status {
 	u32 reg;
 	struct {

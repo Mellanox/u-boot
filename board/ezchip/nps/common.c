@@ -605,3 +605,13 @@ unsigned long get_board_sys_clk(void)
 	return frequency;
 }
 
+bool is_east_dgb_lan(void)
+{
+	char *env_dbg_lan_side = NULL;
+
+	env_dbg_lan_side = getenv("dbg_lan_side");
+	if (env_dbg_lan_side)
+		if ((strcasecmp(env_dbg_lan_side, "EAST") == 0))
+			return true;
+	return false;
+}

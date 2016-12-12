@@ -7,12 +7,19 @@
 #include <common.h>
 #include <net.h>
 
+u32 dbg_lan_base;
+extern bool is_east_dgb_lan(void);
+
 #define NPS_ETH_NAME "nps_eth"
 #define NPS_ETH_ZLEN			60
 #define NPS_ETH_MAX_RX_FRAME_LENGTH	1518
 #define NPS_ETH_MAX_TX_FRAME_LENGTH	0x7FF
 #define NPS_ETH_WATCHDOG_CNTR		100000
 #define NPS_ETH_WORDS_NUM(x)		((x + 3) >> 2)
+
+#define NPS_ETH_WEST_DBG_LAN_BLOCK_ADDR        0xF7070000
+#define NPS_ETH_EAST_DBG_LAN_BLOCK_ADDR        0xF7470000
+#define NPS_ETH_DBG_LAN_BLOCK_SIZE             0x1940
 
 /* dbg_lan register values */
 #define NPS_ETH_ENABLE				1
@@ -23,22 +30,30 @@
 #define NPS_ETH_GE_MAC_CFG_2_STAT_EN		0x3
 #define NPS_ETH_GE_MAC_CFG_3_RX_IFG_TH		0x14
 
+/* dbg_lan registers offset*/
+#define NPS_ETH_DBG_LAN_TX_CTL_OFFSET		(0x800)
+#define NPS_ETH_DBG_LAN_TX_BUF_OFFSET		(0x808)
+#define NPS_ETH_DBG_LAN_RX_CTL_OFFSET		(0x810)
+#define NPS_ETH_DBG_LAN_RX_BUF_OFFSET		(0x818)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_0_OFFSET	(0x1000)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_1_OFFSET	(0x1004)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_2_OFFSET	(0x1008)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_3_OFFSET	(0x100C)
+#define NPS_ETH_DBG_LAN_GE_RST_OFFSET		(0x1400)
+#define NPS_ETH_DBG_LAN_PHASE_FIFO_CTL_OFFSET	(0x1404)
+
 /* dbg_lan registers */
-#ifdef CONFIG_NPS_DBG_LAN_WEST
-#define NPS_ETH_DBG_LAN_BASE		0xF7070000
-#else
-#define NPS_ETH_DBG_LAN_BASE		0xF7470000
-#endif
-#define NPS_ETH_DBG_LAN_TX_CTL		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x800)
-#define NPS_ETH_DBG_LAN_TX_BUF		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x808)
-#define NPS_ETH_DBG_LAN_RX_CTL		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x810)
-#define NPS_ETH_DBG_LAN_RX_BUF		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x818)
-#define NPS_ETH_DBG_LAN_GE_MAC_CFG_0	(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x1000)
-#define NPS_ETH_DBG_LAN_GE_MAC_CFG_1	(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x1004)
-#define NPS_ETH_DBG_LAN_GE_MAC_CFG_2	(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x1008)
-#define NPS_ETH_DBG_LAN_GE_MAC_CFG_3	(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x100C)
-#define NPS_ETH_DBG_LAN_GE_RST		(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x1400)
-#define NPS_ETH_DBG_LAN_PHASE_FIFO_CTL	(u32 *)(NPS_ETH_DBG_LAN_BASE + 0x1404)
+#define NPS_ETH_DBG_LAN_TX_CTL			(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_TX_CTL_OFFSET)
+#define NPS_ETH_DBG_LAN_TX_BUF			(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_TX_BUF_OFFSET)
+#define NPS_ETH_DBG_LAN_RX_CTL			(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_RX_CTL_OFFSET)
+#define NPS_ETH_DBG_LAN_RX_BUF			(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_RX_BUF_OFFSET)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_0		(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_GE_MAC_CFG_0_OFFSET)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_1		(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_GE_MAC_CFG_1_OFFSET)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_2		(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_GE_MAC_CFG_2_OFFSET)
+#define NPS_ETH_DBG_LAN_GE_MAC_CFG_3		(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_GE_MAC_CFG_3_OFFSET)
+#define NPS_ETH_DBG_LAN_GE_RST			(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_GE_RST_OFFSET)
+#define NPS_ETH_DBG_LAN_PHASE_FIFO_CTL		(u32 *)(dbg_lan_base + NPS_ETH_DBG_LAN_PHASE_FIFO_CTL_OFFSET)
+
 
 /*
  * Tx control register

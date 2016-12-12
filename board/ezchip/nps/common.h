@@ -175,21 +175,6 @@ enum	emem_mc_cached {
 	NUM_OF_CACHED_REGS
 };
 
-
-union  crg_gen_purp_0 {
-	u32 reg;
-	struct {
-		u32 reserved14_31:18;
-		u32 mbist_failed:1;
-		u32 mbist_not_finished:1;
-		u32 ddr_error:4;
-		u32 reserved1_7:7;
-		u32 sync_bit:1;
-	} fields;
-};
-
-
-
 void flash_to_mem(unsigned int src_addr,
 		  unsigned int dst_addr,
 		  unsigned int size);
@@ -214,5 +199,5 @@ int serdes_sbus_write_cmd(unsigned int serdes_block_id, unsigned int receiver, u
 int serdes_sbus_read_cmd(unsigned int serdes_block_id, unsigned int receiver, unsigned int* ret_data, unsigned int data_address);
 int serdes_execute_interrupt(unsigned int serdes_block_id, unsigned int receiver, unsigned int execute_code, unsigned int execute_data, unsigned int expected_data);
 int serdes_sbus_burst_upload(unsigned int serdes_block_id, unsigned int receiver, unsigned int burst_addr, unsigned int serdes_ucode[], unsigned int ucode_size);
-
+bool is_east_dgb_lan(void);
 #endif /* _COMMON_H_ */
