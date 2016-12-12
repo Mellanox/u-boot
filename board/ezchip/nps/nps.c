@@ -93,8 +93,15 @@ int board_eth_init(bd_t *bd)
 #ifdef CONFIG_TARGET_NPS_MINIHE
 	rc += nps_miniHE_eth_initialize();
 #else
-	if (nps_dbg_lan_serdes_init())
+	if (nps_dbg_lan_serdes_init()) {
+		union crg_gen_purp_2 gen_purp_2;
+
 		rc = nps_eth_initialize();
+		/* report dbg_lan side to cp*/
+		gen_purp_2.reg = read_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_2);
+		gen_purp_2.fields.dbg_lan_side = is_east_dgb_lan() ? 1:0;
+		write_non_cluster_reg(CRG_BLOCK_ID, CRG_REG_GEN_PURP_2, gen_purp_2.reg);
+	}
 #endif
 #endif
 	return rc;
