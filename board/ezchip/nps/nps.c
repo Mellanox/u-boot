@@ -35,6 +35,7 @@
 #ifdef CONFIG_OF_LIBFDT
 #include <libfdt.h>
 #include <fdt_support.h>
+#include "../../../drivers/net/nps_eth.h"
 #endif
 #include "common.h"
 #include "nps.h"
@@ -51,6 +52,9 @@
 #endif
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+
+#define REG_FIELD_LEN	8
+
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	int rc;
@@ -80,6 +84,33 @@ int ft_board_setup(void *blob, bd_t *bd)
 				fdt_strerror(rc));
 	}
 
+	/* dbg_lan is set to west side by default.
+	* in case east dbg lan was configured, overwrite the bdg_lan
+	* block address in the dtb*/
+	if(is_east_dgb_lan()) {
+		unsigned long val;
+		char buffer[128];
+		char *data;
+		int node;
+
+		data = &buffer[0];
+	        node = fdt_path_offset (blob, "ethernet0");
+		if (node < 0) {
+			printf ("ethernet0 not found in fdt\n");
+			return node;
+		}
+
+		val = NPS_ETH_EAST_DBG_LAN_BLOCK_ADDR;
+		*(__be32 *)data = __cpu_to_be32(val);
+		data +=4;
+		val = NPS_ETH_DBG_LAN_BLOCK_SIZE;
+		*(__be32 *)data = __cpu_to_be32(val);
+		rc= fdt_setprop(blob, node, "reg", buffer, REG_FIELD_LEN);
+		if (rc) {
+			printf ("set property failed err=%s\n", fdt_strerror(rc));
+			return rc;
+		}
+	}
 	return 0;
 }
 #endif
