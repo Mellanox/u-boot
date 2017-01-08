@@ -273,5 +273,7 @@ struct link_status {
 
 #define LINK_STATUS_PEXC	0x10B
 #define LINK_STATUS_UP		0xC0000000
+#define LINK_STATUS_DLS		0x80000000
+#define LINK_STATUS_PLS		0x40000000
 
 #endif /* _SPL_COMMON_H_ */

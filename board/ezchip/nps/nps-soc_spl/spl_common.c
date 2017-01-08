@@ -207,7 +207,7 @@ static int do_check_spico_ready(void)
  */
 static int do_poll_link_status(void)
 {
-	unsigned int i;
+	unsigned int i, pexc_link_status = 0;
 	int err_res;
 	struct link_status link_status;
 
@@ -230,9 +230,11 @@ static int do_poll_link_status(void)
 		spl_print(" [%d retries for polling pci gen] ", i);
 	}
 
-	for (i = 0; i < POLLING_RETRIES; i++)
-		if ((read_non_cluster_reg(PEXC_BLOCK_ID, LINK_STATUS_PEXC) & LINK_STATUS_UP) == LINK_STATUS_UP)
+	for (i = 0; i < POLLING_RETRIES; i++) {
+		pexc_link_status = read_non_cluster_reg(PEXC_BLOCK_ID, LINK_STATUS_PEXC);
+		if ((pexc_link_status & LINK_STATUS_UP) == LINK_STATUS_UP)
 			break;
+	}
 	spl_print(" [%d retries for polling link status in pexc block] ", i);
 
 	err_res = read_non_cluster_reg(CFGB_WEST_BLOCK_ID, CFGB_REG_ERR_RES);
@@ -240,7 +242,12 @@ static int do_poll_link_status(void)
 		printf("do_poll_link_status: warning! ERR_RES bit is ON (after polling)\n");
 
 	if (i == POLLING_RETRIES) {
-		printf("do_poll_link_status: timeout\n");
+		if ((pexc_link_status & LINK_STATUS_DLS) == LINK_STATUS_DLS)
+			printf("do_poll_link_status: Physical link status is down\n");
+		else if ((pexc_link_status & LINK_STATUS_PLS) == LINK_STATUS_PLS)
+			printf("do_poll_link_status: Data link status is down\n");
+		else 
+			printf("do_poll_link_status: Data and Physical links status is down\n");
 		return 1;
 	}
 
