@@ -200,6 +200,11 @@ int board_late_init(void)
 	configure_mtm();
 	check_mbist_result();
 
+	/* Before loading uImage, disable all interrupts in order to avoid 
+	 * unexpected ones before the relevant linux driver is ready.
+	 * Bits 0-2 are reserved and should be set to 0b111 by the ISA. */
+	write_aux_reg(ARC_AUX_IENABLE, 0x7);
+
 #ifdef CONFIG_TARGET_NPS_SIM
 	/* Copy kernel from flash to external memory */
 	/* TODO remove this once simulator support flash operations */

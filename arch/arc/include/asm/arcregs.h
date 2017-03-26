@@ -55,6 +55,8 @@
 #define ARC_AUX_SLC_FLDL	0x912
 #define ARC_BCR_CLUSTER		0xcf
 
+#define ARC_AUX_IENABLE		0x40C
+
 /* IO coherency related auxiliary registers */
 #define ARC_AUX_IO_COH_ENABLE	0x500
 #define ARC_AUX_IO_COH_PARTIAL	0x501
