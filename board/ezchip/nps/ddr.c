@@ -1774,6 +1774,32 @@ static void configure_emem_mi(void)
 		if (IS_DDR4_DEVICE(current_ddr_params.type))
 			write_non_cluster_reg(block_id,
 				EMEM_MI_REG_WR_RD_REQ_SM, 0x8309E09E);
+		if(IS_16X_EXT_MEM_DEVICE(current_ddr_params.type)) {
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_AVG_LAT_CALC, 0x7b4e0000);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RD_REQ_SM, 0x2305e001);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_SM_RD_WR_WIN, 0xb464F078);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_0, 0x01ff0144);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_1, 0x01ff0158);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_2, 0x01ff016c);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_3, 0x01f00180);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_4, 0x01dc0194);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_5, 0x01a401cc);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_6, 0x017c01F4);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RDWR_SM_PROFILE_7, 0x015401FF);
+			write_non_cluster_reg(block_id,
+				EMEM_MI_REG_RD_WR_SM_STARVATION_PREVENTION, 0x03E81770);
+		}
 	}
 }
 
