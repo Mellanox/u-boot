@@ -48,7 +48,6 @@ unsigned long get_board_sys_clk(void);
 /*
  * Board configuration
  */
-#define CONFIG_ARCH_EARLY_INIT_R
 #define CONFIG_BOARD_LATE_INIT
 
 /*
@@ -61,21 +60,11 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_INIT_SP_ADDR	\
 		(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_MALLOC_LEN		0x200000	/* 2 MB */
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_NPS_KERNEL_MSID_SIZE	0x100000000
 #define CONFIG_CMD_MEMTEST
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x70000000)
-#define CONFIG_NPS_UIMAGE_EMEM_ADDR	0x80000000
-#define CONFIG_NPS_DTB_EMEM_ADDR	0x8ff00000
 #define CONFIG_SYS_BOOTM_LEN		0x2000000
 #define BIST_CONFIG_LRAM_ADDRESS	0xf8500000
-
-/*
- * External memory configuration
- */
-
-#define CONFIG_NPS_DDR_DEBUG
 
 /*
  * UART configuration
@@ -92,12 +81,7 @@ unsigned long get_board_sys_clk(void);
 /*
  * Command line configuration
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_RUN		/* run command in env variable */
 #define CONFIG_CMD_SF
-#define CONFIG_CMD_NET		/* bootp, tftpboot, rarpboot */
 #define CONFIG_CMD_PING
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_MAXARGS	16
@@ -115,12 +99,10 @@ unsigned long get_board_sys_clk(void);
 /*
  * Environment configuration
  */
-#define CONFIG_BOOTDELAY		3
 #define CONFIG_AUTOBOOT_KEYED
 #define CONFIG_AUTOBOOT_STOP_STR	"\x1b\x1b"
 #undef CONFIG_AUTOBOOT_DELAY_STR
-#define CONFIG_AUTOBOOT_PROMPT		"Autobooting in %d seconds, " \
-					"press \"<Esc><Esc>\" to stop\n", bootdelay
+#define CONFIG_AUTOBOOT_PROMPT		"Autobooting in %d seconds, press \"<Esc><Esc>\" to stop\n"
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_LOADADDR			0x90000000
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
@@ -128,9 +110,7 @@ unsigned long get_board_sys_clk(void);
 /*
  * Console configuration
  */
-#define	CONFIG_SYS_HUSH_PARSER
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"nps# "
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
@@ -138,27 +118,16 @@ unsigned long get_board_sys_clk(void);
 /*
  * FLASH
  */
-#define CONFIG_NPS_SPI
+#define CONFIG_SYS_MAX_FLASH_BANKS      1       /* max num of flash banks (= chip selects) */
 #define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_SPANSION
 #define CONFIG_SPI_FLASH_BAR
 #define CONFIG_SF_DEFAULT_SPEED		25000000
 #define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
-#define CONFIG_NPS_SPI_BASE		0xF7208C00
-#define CONFIG_NPS_UIMAGE_FLASH_OFFS	0x0
-#define CONFIG_NPS_UBOOT_FLASH_OFFS	0xe70000
-#define CONFIG_NPS_DTB_FLASH_OFFS	0xef0000
-#define CONFIG_NPS_BTL_FLASH_OFFS	0xf00000
-#define CONFIG_NPS_UIMAGE_SIZE		0xe70000
-#define CONFIG_NPS_UBOOT_SIZE		0x80000
-#define CONFIG_NPS_BTL_SIZE		0x80000
-#define CONFIG_NPS_DTB_SIZE		0x10000
 
 /*
  * NET
  */
-#define CONFIG_NPS_ETH
-#define CONFIG_NPS_DBG_LAN_WEST
 #define CONFIG_OVERWRITE_ETHADDR_ONCE
 #define CONFIG_ETHADDR			00:C0:00:F0:04:58	/* Ethernet address */
 #define CONFIG_IPADDR			10.1.5.110		/* Our ip address */
@@ -169,7 +138,6 @@ unsigned long get_board_sys_clk(void);
 /*
  * fdt
  */
-#define CONFIG_OF_LIBFDT	1
 #define CONFIG_OF_BOARD_SETUP
 
 /*

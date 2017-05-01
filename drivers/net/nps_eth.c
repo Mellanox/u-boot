@@ -4,7 +4,7 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <malloc.h>
 #include "nps_eth.h"
@@ -156,14 +156,14 @@ static int nps_eth_rx(struct eth_device *dev)
 		}
 
 		/* read Rx Buffer */
-		rx_buf = (u32 *)NetRxPackets[curr_rx_buf];
+		rx_buf = (u32 *)net_rx_packets[curr_rx_buf];
 		for (i = 0; i < k; i++)
 			rx_buf[i] = in_be32(NPS_ETH_DBG_LAN_RX_BUF);
 
 		/* read finished */
 		out_be32(NPS_ETH_DBG_LAN_RX_CTL, 0);
 
-		NetReceive(NetRxPackets[curr_rx_buf], length);
+		net_process_received_packet(net_rx_packets[curr_rx_buf], length);
 		if (++curr_rx_buf >= PKTBUFSRX)
 			curr_rx_buf = 0;
 

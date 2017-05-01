@@ -31,6 +31,7 @@
 */
 
 #include <malloc.h>
+#include <console.h>
 #include "bist.h"
 #include "bist_pattern.h"
 #include "ddr.h"

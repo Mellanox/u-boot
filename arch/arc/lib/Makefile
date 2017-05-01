@@ -4,9 +4,9 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-obj-y += sections.o
 obj-y += memcpy-700.o
 obj-y += memset.o
+obj-y += memcmp.o
 ifneq ($(CONFIG_SPL_BUILD),y)
 extra-y	= start.o
 head-y := start.o
@@ -18,7 +18,6 @@ obj-y += strchr-700.o
 obj-y += strcmp.o
 obj-y += strcpy-700.o
 obj-y += strlen.o
-obj-y += memcmp.o
 obj-y += reset.o
 obj-y += timer.o
 obj-y += ints_low.o

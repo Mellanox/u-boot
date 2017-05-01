@@ -32,7 +32,7 @@
 
 #include <common.h>
 #include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include "common.h"
 #include "ddr.h"
 #include "nps.h"
@@ -491,7 +491,6 @@ static const u32 tRFC1_ddr4[6] = { 0, 0, 160000, 260000, 350000, 390000 };
 static const u32 tRFC2_ddr4[6] = { 0, 0, 110000, 160000, 260000, 300000 };
 static const u32 tRFC4_ddr4[6] = { 0, 0, 90000, 110000, 160000, 200000 };
 static	const u32 tWR = 15000;
-static	const u64 tWR1 = 15000000;
 
 /* table saves values in ns * 1000 = psec */
 static const u32 tCK[NUM_OF_DEFAULTS_FREQ] = {

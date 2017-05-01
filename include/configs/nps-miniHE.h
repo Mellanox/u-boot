@@ -40,11 +40,6 @@
 #define CONFIG_SYS_TIMER_RATE		CONFIG_SYS_CLK_FREQ
 
 /*
- * Board configuration
- */
-#define CONFIG_ARCH_EARLY_INIT_R
-
-/*
  * Memory configuration
  */
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
@@ -58,7 +53,6 @@
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (1 << 19))	/* 2 MB */
 #define CONFIG_SYS_LOAD_ADDR		0x90000000
 #define CONFIG_ROOTPATH			"/opt/ARC/rootfs/default"
-#define CONFIG_SYS_NO_FLASH
 
 /*
  * UART configuration
@@ -74,13 +68,8 @@
 /*
  * Command line configuration
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_SAVEENV
-#define CONFIG_CMD_RUN		/* run command in env variable */
 #define CONFIG_CMD_SF
-#define CONFIG_CMD_NET		/* bootp, tftpboot, rarpboot */
 
 
 #define CONFIG_AUTO_COMPLETE
@@ -98,7 +87,6 @@
 /*
  * Environment configuration
  */
-#define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_BOOTARGS		"console=ttyARC0,115200n8"
 #define CONFIG_LOADADDR		CONFIG_SYS_LOAD_ADDR
@@ -108,7 +96,6 @@
  * Console configuration
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT	"nps# "
 #define CONFIG_SYS_CBSIZE	256
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE + \
@@ -117,18 +104,15 @@
 /*
  * FLASH
  */
-#define CONFIG_NPS_SPI
+#define CONFIG_SYS_MAX_FLASH_BANKS      1       /* max num of flash banks (= chip selects) */
 #define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_SPANSION
 #define CONFIG_SF_DEFAULT_SPEED		(CONFIG_SYS_CLK_FREQ / 2)
-#define CONFIG_NPS_SPI
-#define CONFIG_NPS_SPI_BASE		0xC0001000
 #define NPS_SPI_RSVD_2_ADDRESS		(volatile int *)(0xC0002040)
 
 /*
  * NET
  */
-#define CONFIG_NPS_MINIHE_ETH
 
 #define CONFIG_ETHADDR		00:C0:00:99:AA:FE	/* Ethernet address */
 #define CONFIG_IPADDR		10.1.8.254		/* Our ip address */

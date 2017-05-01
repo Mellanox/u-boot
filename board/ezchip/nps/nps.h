@@ -37,7 +37,7 @@
 #include <command.h>
 #include <net.h>
 #include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <linux/ctype.h>
 #include <image.h>
 #include "common.h"

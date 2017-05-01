@@ -30,6 +30,7 @@
 * SOFTWARE.
 */
 
+#include <console.h>
 #include "common.h"
 #include "ddr_debug.h"
 #include "ddr.h"
@@ -456,16 +457,6 @@ static const int pub_dx_x_bdlr4_addr[] = {
 static const int pub_dx_x_gcr5_addr[] = {
 	PUB_DX0GCR5_REG_ADDR, PUB_DX1GCR5_REG_ADDR,
 	PUB_DX2GCR5_REG_ADDR, PUB_DX3GCR5_REG_ADDR
-};
-
-static const int pub_dx_x_gcr4_addr[] = {
-	PUB_DX0GCR4_REG_ADDR, PUB_DX1GCR4_REG_ADDR,
-	PUB_DX2GCR4_REG_ADDR, PUB_DX3GCR4_REG_ADDR
-};
-
-static const int pub_dx_x_gcr6_addr[] = {
-	PUB_DX0GCR6_REG_ADDR, PUB_DX1GCR6_REG_ADDR,
-	PUB_DX2GCR6_REG_ADDR, PUB_DX3GCR6_REG_ADDR
 };
 
 static struct gpr_setup gpr[EMEM_MC_NUM_OF_BLOCKS] = {

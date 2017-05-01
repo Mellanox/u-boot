@@ -16,6 +16,7 @@
 #include <spi.h>
 #include <spi_flash.h>
 #include <linux/log2.h>
+#include <linux/string.h>
 #include <dma.h>
 
 #include "sf_internal.h"

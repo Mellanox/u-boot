@@ -10,6 +10,7 @@ ENTRY(_start)
 SECTIONS
 {
 	. = ALIGN(4);
+	__text_start = .;
 	.text :	{
 		*(.__text_start)
 		*(.__image_copy_start)
@@ -52,6 +53,7 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
+	__bss_start = .;
 	.bss_start : {
 		*(.__bss_start);
 	}
@@ -63,6 +65,7 @@ SECTIONS
 	.bss_end : {
 		*(.__bss_end);
 	}
+	__bss_end = .;
 
 	. = ALIGN(4);
 	.image_copy_end : {

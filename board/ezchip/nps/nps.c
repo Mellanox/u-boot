@@ -170,7 +170,7 @@ int misc_init_r(void)
 	/* override ethaddr in env */
 	env_string = strsep(&krn_p, "=");
 	eth_parse_enetaddr(krn_p, mac_addr);
-	if (is_valid_ether_addr(mac_addr))
+	if (is_valid_ethaddr(mac_addr))
 		eth_setenv_enetaddr("ethaddr", mac_addr);
 
 	/* check extra kernel parameters */

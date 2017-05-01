@@ -23,3 +23,80 @@ if TARGET_NPS_HE
 config SYS_CONFIG_NAME
 	default "nps-HE"
 endif
+
+config NPS_DTB_EMEM_ADDR
+	hex "DTB address"
+	default 0x80f00000 if TARGET_NPS_SIM
+	default 0x8ff00000 if TARGET_NPS_SOC
+
+config NPS_DTB_FLASH_OFFS
+	hex "DTB offset"
+	default 0xef0000
+
+config NPS_DTB_SIZE
+	hex "DTB size"
+	default 0x10000
+
+config NPS_ETH
+	bool "NPS network device"
+	default y if ! TARGET_NPS_MINIHE
+
+config NPS_MINIHE_ETH
+	bool "NPS miniHE network device"
+	default y if TARGET_NPS_MINIHE
+
+config NPS_KERNEL_MSID_SIZE
+	hex "Kernel default MSID size"
+	default 0x20000000 if TARGET_NPS_HE
+	default 0x100000000 if TARGET_NPS_SIM
+	default 0x100000000 if TARGET_NPS_SOC
+
+config NPS_SPI
+	bool "NPS flash device"
+	default y
+
+config NPS_SPI_BASE
+	hex "NPS SPI address"
+	default 0xC0001000 if TARGET_NPS_MINIHE
+	default 0xF7208C00 if ! TARGET_NPS_MINIHE
+
+config NPS_UBOOT_FLASH_OFFS
+	hex "Offset on flash"
+	default 0xe70000
+
+config NPS_UBOOT_SIZE
+	hex "Size on flash"
+	default 0x80000
+
+config NPS_BTL_SIZE
+	hex "Size on flash"
+	default 0x80000
+
+config NPS_UIMAGE_EMEM_ADDR
+	hex "Kernel address"
+	default 0x80001fc0 if TARGET_NPS_SIM
+	default 0x80000000 if TARGET_NPS_SOC
+
+config NPS_UIMAGE_FLASH_OFFS
+	hex "Offset on flash"
+	default 0
+
+config NPS_UIMAGE_SIZE
+	hex "Size on flash"
+	default 0xe70000
+
+config NPS_BTL_FLASH_OFFS
+	hex "Offset on flash"
+	default	0xf00000
+
+config NPS_DBG_LAN_WEST
+	bool "Management LAN side"
+	default y if TARGET_NPS_SOC
+
+config NPS_DDR_DEBUG
+	bool "Debug mode"
+	default y if TARGET_NPS_SOC
+
+config CONFIG_NPS_EMEM_DDR4_8BIT
+	bool "EMEM mode"
+	default y if TARGET_NPS_HE
