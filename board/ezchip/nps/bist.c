@@ -1070,7 +1070,7 @@ enum bist_repetition_mode get_bist_op_mode(char* mode)
 	return ERROR_OP_MODE;
 }
 
-int run_default_bist(u32 skip_mc_mask)
+int run_default_bist(u32 skip_mc_mask, int size)
 {
 	u32 status, i;
 	struct bist_parameters bist_params;
@@ -1081,7 +1081,7 @@ int run_default_bist(u32 skip_mc_mask)
 	bist_params.rep_mode = SINGLE;
 	bist_params.op_mode = WRITE_COMPARE;
 	bist_params.address = 0x0;
-	bist_params.length = (1<<30);
+	bist_params.length = ( size / EMEM_MC_NUM_OF_CONTROLLERS )*(1<<10)*(1<<10);
 	for(i = 0; i < DATA_QUEUES; i++)
 		bist_params.dq_masks[i].mask = 0xf;
 	if (!set_bist_pattern(&bist_params)) {
@@ -1093,7 +1093,7 @@ int run_default_bist(u32 skip_mc_mask)
 	return status;
 }
 
-int init_ddr_by_bist(u32 skip_mc_mask)
+int init_ddr_by_bist(u32 skip_mc_mask, int size)
 {
 	u32 status, i;
 	struct bist_parameters bist_params;
@@ -1104,7 +1104,7 @@ int init_ddr_by_bist(u32 skip_mc_mask)
 	bist_params.rep_mode = SINGLE;
 	bist_params.op_mode = WRITE_ONLY;
 	bist_params.address = 0x0;
-	bist_params.length = (1<<30);
+	bist_params.length = ( size / EMEM_MC_NUM_OF_CONTROLLERS )*(1<<10)*(1<<10);
 	for(i = 0; i < DATA_QUEUES; i++)
 		bist_params.dq_masks[i].mask = 0xf;
 	if (!set_bist_pattern(&bist_params)) {

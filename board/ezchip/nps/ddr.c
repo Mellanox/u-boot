@@ -3954,7 +3954,7 @@ int configure_emem(void)
 	}
 	enable_ddr();
 	if(!getenv_yesno("ddr_skip_bist")) {
-		status = run_default_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS));
+		status = run_default_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS), current_ddr_params.size);
 		if(status) {
 			set_err_indication(BIST_FAILED);
 			error("Default bist run failed");
@@ -3962,7 +3962,7 @@ int configure_emem(void)
 		}
 	}
         if(!getenv_yesno("ddr_skip_init")) {
-		status = init_ddr_by_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS));
+		status = init_ddr_by_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS), current_ddr_params.size);
 		if(status) {
 			set_err_indication(BIST_FAILED);
 			error("Default bist run failed");

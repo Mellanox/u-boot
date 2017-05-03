@@ -183,6 +183,6 @@ int do_bus_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int do_bist_results(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int do_bist_loop(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int start_bist(struct bist_parameters *parameters);
-int run_default_bist(u32 skip_mc_mask);
-int init_ddr_by_bist(u32 skip_mc_mask);
+int run_default_bist(u32 skip_mc_mask, int size);
+int init_ddr_by_bist(u32 skip_mc_mask, int size);
 #endif /* _BIST_H_ */
