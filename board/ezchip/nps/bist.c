@@ -1116,6 +1116,17 @@ int init_ddr_by_bist(u32 skip_mc_mask, int size)
 	return status;
 }
 
+void set_full_ddr_size(int size)
+{
+	int full_ddr_size, index;
+
+        full_ddr_size = ( size / EMEM_MC_NUM_OF_CONTROLLERS )*(1<<10)*(1<<10);
+        rand_pattern_config.length = full_ddr_size;
+        for (index = 0; index < BIST_NUM_OF_PATTERNS; index++)
+                bist_configs[index].length = full_ddr_size;
+
+}
+
 int do_ddr_bist(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct bist_parameters params;

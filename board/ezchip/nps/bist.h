@@ -185,4 +185,5 @@ int do_bist_loop(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int start_bist(struct bist_parameters *parameters);
 int run_default_bist(u32 skip_mc_mask, int size);
 int init_ddr_by_bist(u32 skip_mc_mask, int size);
+void set_full_ddr_size(int size);
 #endif /* _BIST_H_ */

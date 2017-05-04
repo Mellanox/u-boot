@@ -3953,6 +3953,7 @@ int configure_emem(void)
 		return -1;
 	}
 	enable_ddr();
+	set_full_ddr_size(current_ddr_params.size);
 	if(!getenv_yesno("ddr_skip_bist")) {
 		status = run_default_bist(GET_BITS(~skip_mc_mask, 0, EMEM_MC_NUM_OF_CONTROLLERS), current_ddr_params.size);
 		if(status) {
