@@ -806,15 +806,20 @@ int setup_pci_link(void)
 		spl_print("Done\n");
 	}
 
+	/* Enable PCS interrupts */
+	spl_print("SPL: Enable PCS interrupts (0x%x)... ", SERDES_PCIE_EN_PCS_INTR);
+	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_PCS_CFG, SERDES_PCIE_EN_PCS_INTR);
+	spl_print("Done\n");
+
 	/* Release PCI PCS reset */
 	spl_print("SPL: Release PCI PCS reset... ");
 	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_PCS_RST_N, SERDES_PCIE_PCS_DEASSERT);
 	spl_print("Done\n");
 
-	/* Enable PCS interrupts */
-	spl_print("SPL: Enable PCS interrupts (0x%x)... ", SERDES_PCIE_EN_PCS_INTR);
-	write_non_cluster_reg(SERDES_WEST_BLOCK_ID, SERDES_REG_PCIE_PCS_CFG, SERDES_PCIE_EN_PCS_INTR);
-	spl_print("Done\n");
+	spl_print("SPL: Execute interrupt 0x8023 with data 0x4");
+	err = serdes_execute_interrupt(SERDES_WEST_BLOCK_ID, SBUS_RCVR_SERDES_48, SERDES_RX_TX_SENSITIVITY_INT, 0x4, 0x23 );
+	if( !err )
+		spl_print("Done\n");
 
 #ifdef CHECK_SPICO_READY
 /* no need to wait for SPICO ready because CRC check already does that by initiating interrupt */
@@ -897,6 +902,11 @@ int setup_pci_link(void)
 	spl_print("SPL: Waiting for link status... ");
 	err = do_poll_link_status();
 	if (!err)
+		spl_print("Done\n");
+
+	spl_print("SPL: Execute interrupt 0x8023 with data 0x24");
+	err = serdes_execute_interrupt(SERDES_WEST_BLOCK_ID, SBUS_RCVR_SERDES_48, SERDES_RX_TX_SENSITIVITY_INT, 0x24, 0x23 );
+	if(!err)
 		spl_print("Done\n");
 
 #ifdef DIRECT_SPEED_CHANGE
