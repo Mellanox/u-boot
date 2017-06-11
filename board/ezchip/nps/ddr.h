@@ -528,6 +528,7 @@ struct ddr_params {
 	u32			phy_rd_vref;
 	struct clk_psec		clk[EMEM_MC_NUM_OF_BLOCKS];
 	enum	ddr_pll_freq	pll_freq; /* derived from clock_frequency */
+	bool			ddr_double_refresh; /* doubled refresh rates */
 };
 
 struct gpr_setup {

@@ -50,6 +50,7 @@ int	g_EZsim_mode = 0;
 static int skip_mc_mask = 0;
 bool g_int_lb_mode = false;
 static void configure_relax_mc(void);
+static void set_ddr_double_refresh(void);
 static void configure_emem_mi(void);
 static void ddr_phy_reset_internal_read_fifos(u32 port);
 
@@ -242,7 +243,8 @@ static struct ddr_params ddr_config_0 = {
 	{ { 0, 82 }, { 0, 82 }, { 0, 82 }, { 0, 82 },
 	  { 0, 82 }, { 0, 82 }, { 0, 82 }, { 0, 82 },
 	  { 0, 82 }, { 0, 82 }, { 0, 82 }, { 0, 82 } },
-	  DDR_1200_MHz
+	  DDR_1200_MHz,
+	false /* ddr_double_refresh */
 };
 
 struct ddr_params  current_ddr_params;
@@ -1893,6 +1895,7 @@ static void get_ddr_parameters(void)
 	char *env_speed_bin;
 	char *env_size;
 	char *env_skip_mc;
+	char *env_double_refresh;
 	union crg_gen_purp_1 gen_purp_1;
 	union crg_gen_purp_2 gen_purp_2;
 	u32 boot_cfg, package = 8;
@@ -2068,6 +2071,11 @@ static void get_ddr_parameters(void)
 	if(env_mem_vref)
 		current_ddr_params.mem_vref =  simple_strtoul(env_mem_vref, NULL, 10);
 
+	env_double_refresh = getenv ("ddr_double_refresh");
+	if(env_double_refresh && !strcmp (env_double_refresh, "enabled")) {
+		current_ddr_params.ddr_double_refresh = true;
+	}
+
 	/* deliver information to cp */
 	gen_purp_1.fields.type = current_ddr_params.type;
 	gen_purp_1.fields.size = current_ddr_params.size;
@@ -2229,6 +2237,22 @@ int set_ddr_freq(void)
                                         saved_emi_rst[reg - CRG_REG_EMI_RST_START].reg);
     return 0;
 }
+
+static void set_ddr_double_refresh(void)
+{
+	union emem_mc_mc_ddr_if mc_ddr_if;
+	u32 block;
+
+	for (block = 0; block < EMEM_MC_NUM_OF_BLOCKS; block++) {
+		mc_ddr_if.reg =  read_non_cluster_reg(emem_mc_block_id[block],
+			EMEM_MC_REG_MC_DDR_IF);
+		mc_ddr_if.fields.ref_hot_update = 1;
+		mc_ddr_if.fields.ezref_hot_update = 1;
+		write_non_cluster_reg(emem_mc_block_id[block],
+			EMEM_MC_REG_MC_DDR_IF, mc_ddr_if.reg);
+	}
+}
+
 
 static void sdram_init(void)
 {
@@ -3931,6 +3955,10 @@ int configure_emem(void)
 			error("ddr training failed ");
 			return -1;
 		}
+	}
+
+	if(current_ddr_params.ddr_double_refresh) {
+		set_ddr_double_refresh();
 	}
 
 	if (IS_DDR4_DEVICE(current_ddr_params.type)) {
