@@ -211,6 +211,8 @@ unsigned long get_board_sys_clk(void);
 		"sf write ${loadaddr} ${dtb_flash_offs} ${filesize}\0"		\
 	"bistcfgup=tftpboot ${bistcfgaddr} ${bist_cfg_file} && "		\
 		"ddr_bist run 0xffffff 10 ${bistcfgaddr}\0"			\
+	"ubootload=tftpboot ${uboot_address} ${uboot_file} && "			\
+		"go ${uboot_address}\0"						\
 
 /* SPL defines */
 #define CONFIG_SPL_LDSCRIPT	"board/ezchip/nps/nps-soc_spl/u-boot-spl.lds"
