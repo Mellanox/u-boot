@@ -131,9 +131,9 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_OVERWRITE_ETHADDR_ONCE
 #define CONFIG_ETHADDR			00:C0:00:F0:04:58	/* Ethernet address */
 #define CONFIG_IPADDR			10.1.5.110		/* Our ip address */
-#define CONFIG_SERVERIP			10.1.3.132		/* tftp server ip address */
-#define CONFIG_GATEWAYIP		10.1.1.10
-#define CONFIG_NETMASK			255.255.0.0
+#define CONFIG_SERVERIP			10.7.1.17		/* tftp server ip address */
+#define CONFIG_GATEWAYIP		10.7.190.1
+#define CONFIG_NETMASK			255.255.252.0
 
 /*
  * fdt
