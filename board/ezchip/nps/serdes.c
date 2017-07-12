@@ -12102,7 +12102,7 @@ static int serdes_wait_tx_rx_rdy(void)
 		write_non_cluster_reg(dbg_lan_block_id, DBG_LAN_IND_CMD, ind_cmd);
 		for (j = 0 ; j < SERDES_STATUS_REG_RETRY_NUM; j++) {
 			data = read_non_cluster_reg(dbg_lan_block_id, DBG_LAN_IND_STS);
-#ifdef CONFIG_TARGET_NPS_SOC
+#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_IDG4400)
 			if (data & DBG_LAN_IND_STS_RDY)
 				break;
 			udelay(10);
@@ -12116,7 +12116,7 @@ static int serdes_wait_tx_rx_rdy(void)
 			return 1;
 		}
 
-#ifdef CONFIG_TARGET_NPS_SOC
+#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_IDG4400)
 		if (!(data & DBG_LAN_IND_STS_SUCCESS)) {
 			printf("serdes_check_status_reg: read status register failed!\n");
 			return 1;

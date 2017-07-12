@@ -35,15 +35,22 @@ extra-$(CONFIG_TARGET_NPS_MINIHE) += nps-miniHE_spl/start.o
 extra-$(CONFIG_TARGET_NPS_SIM) += nps-sim_spl/start.o 
 extra-$(CONFIG_TARGET_NPS_HE) += nps-HE_spl/start.o
 extra-$(CONFIG_TARGET_NPS_SOC) += nps-soc_spl/start.o
+extra-$(CONFIG_TARGET_NPS_IDG4400) += nps-idg4400_spl/start.o
 
 obj-$(CONFIG_TARGET_NPS_MINIHE) += nps-miniHE_spl/spl.o
 obj-$(CONFIG_TARGET_NPS_SIM) += nps-sim_spl/spl.o
 obj-$(CONFIG_TARGET_NPS_HE) += nps-HE_spl/spl.o
 obj-$(CONFIG_TARGET_NPS_SOC) += nps-soc_spl/spl.o
+obj-$(CONFIG_TARGET_NPS_IDG4400) += nps-idg4400_spl/spl.o
 
 ifneq ($(CONFIG_TARGET_NPS_MINIHE),y)
+ifeq ($(CONFIG_TARGET_NPS_IDG4400),y)
+obj-y += nps-idg4400_spl/spl_common.o
+obj-y += nps-idg4400_spl/gen3_ucode.o
+else
 obj-y += nps-soc_spl/spl_common.o
 obj-y += nps-soc_spl/gen3_ucode.o
+endif
 endif
 subdir-$(CONFIG_TARGET_NPS_MINIHE) += ppboot
 endif

@@ -144,7 +144,11 @@ config TARGET_NPS_MINIHE
 config TARGET_NPS_HE
 	bool "Support nps-HE"
 	select SUPPORT_SPL
-	
+
+config TARGET_NPS_IDG4400
+	bool "Support nps-idg4400"
+	select SUPPORT_SPL
+
 endchoice
 
 source "board/abilis/tb100/Kconfig"

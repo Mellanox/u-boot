@@ -100,3 +100,8 @@ config NPS_DDR_DEBUG
 config CONFIG_NPS_EMEM_DDR4_8BIT
 	bool "EMEM mode"
 	default y if TARGET_NPS_HE
+
+if TARGET_NPS_IDG4400
+config SYS_CONFIG_NAME
+        default "nps-idg4400"
+endif

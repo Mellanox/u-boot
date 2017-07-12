@@ -476,7 +476,7 @@ int serdes_execute_interrupt(unsigned int serdes_block_id,
 			printf("serdes_execute_interrupt: failed to read!\n");
 			return 1;
 		}
-#ifdef CONFIG_TARGET_NPS_SOC
+#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_IDG4400)
 		if (!(data & SERDES_REG_INT_STATUS_IN_PROGRESS))
 		break;
 #else
@@ -490,7 +490,7 @@ int serdes_execute_interrupt(unsigned int serdes_block_id,
 		return 1;
 	}
 
-#ifdef CONFIG_TARGET_NPS_SOC
+#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_IDG4400)
 	data = ((data & SERDES_REG_INT_STATUS_DATA_MASK) >> SERDES_REG_INT_STATUS_DATA_OFFS);
 	if (expected_data != data) {
 		printf("serdes_execute_interrupt: interrupt data = 0x%x is not as expected = 0x%x\n",data, expected_data);
@@ -505,7 +505,7 @@ int serdes_sbus_burst_upload(unsigned int serdes_block_id,
 		unsigned int receiver, unsigned int burst_addr,
 		unsigned int serdes_ucode[], unsigned int ucode_size)
 {
-#ifdef CONFIG_TARGET_NPS_SOC
+#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_IDG4400)
 	int result;
 	unsigned int data;
 	int ucode_index, num_writes;

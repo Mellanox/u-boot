@@ -192,7 +192,7 @@ int misc_init_r(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
-#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_HE)
+#if defined(CONFIG_TARGET_NPS_SOC) || defined(CONFIG_TARGET_NPS_HE) || defined(CONFIG_TARGET_NPS_IDG4400)
 	configure_emem();
 #endif
 	configure_l2c();
