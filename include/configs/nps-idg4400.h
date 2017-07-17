@@ -202,6 +202,8 @@ unsigned long get_board_sys_clk(void);
 	"ddr_vref_bypass=1\0"							\
 	"ddr_skip_bist=0\0"							\
 	"ddr_skip_init=0\0"							\
+	"ddr_speed_bin=2666U\0"							\
+	"ddr_size=0xC000\0"							\
 	"fdt_high=0xffffffff\0"							\
 	"fdtaddr=" __stringify(CONFIG_NPS_DTB_EMEM_ADDR) "\0"			\
 	"btl_flash_offs=" __stringify(CONFIG_NPS_BTL_FLASH_OFFS) "\0"		\

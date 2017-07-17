@@ -172,6 +172,8 @@ unsigned long get_board_sys_clk(void);
 	"ddr_skip_bist=0\0"							\
 	"ddr_skip_init=0\0"							\
 	"ddr_double_refresh=disabled\0"						\
+	"ddr_speed_bin=2400R\0"							\
+	"ddr_size=0x6000\0"							\
 	"phy_rd_vref=850\0"							\
 	"fdt_high=0xffffffff\0"							\
 	"fdtaddr=" __stringify(CONFIG_NPS_DTB_EMEM_ADDR) "\0"			\
