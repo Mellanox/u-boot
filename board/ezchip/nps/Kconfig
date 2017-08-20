@@ -27,7 +27,7 @@ endif
 config NPS_DTB_EMEM_ADDR
 	hex "DTB address"
 	default 0x80f00000 if TARGET_NPS_SIM
-	default 0x8ff00000 if TARGET_NPS_SOC
+	default 0x8ff00000 if (TARGET_NPS_SOC || TARGET_NPS_IDG4400)
 
 config NPS_DTB_FLASH_OFFS
 	hex "DTB offset"
@@ -49,7 +49,8 @@ config NPS_KERNEL_MSID_SIZE
 	hex "Kernel default MSID size"
 	default 0x20000000 if TARGET_NPS_HE
 	default 0x100000000 if TARGET_NPS_SIM
-	default 0x100000000 if TARGET_NPS_SOC
+	default 0x100000000 if (TARGET_NPS_SOC || TARGET_NPS_IDG4400)
+
 
 config NPS_SPI
 	bool "NPS flash device"
@@ -75,7 +76,7 @@ config NPS_BTL_SIZE
 config NPS_UIMAGE_EMEM_ADDR
 	hex "Kernel address"
 	default 0x80001fc0 if TARGET_NPS_SIM
-	default 0x80000000 if TARGET_NPS_SOC
+	default 0x80000000 if (TARGET_NPS_SOC || TARGET_NPS_IDG4400)
 
 config NPS_UIMAGE_FLASH_OFFS
 	hex "Offset on flash"
