@@ -277,6 +277,7 @@
 #define PUB_RANKIDR_REG_ADDR		0x137
 #define PUB_ACBDLR0_REG_ADDR		0x150
 #define PUB_ACMDLR0_REG_ADDR		0x168
+#define PUB_ACMDLR1_REG_ADDR		0x168
 #define PUB_IOVCR0_REG_ADDR		0x148
 #define	PUB_VTCR0_REG_ADDR		0x14A
 #define	PUB_VTCR1_REG_ADDR		0x14B
@@ -360,6 +361,8 @@
 #define	PUB_DX1MDLR0_REG_ADDR		0x228
 #define	PUB_DX2MDLR0_REG_ADDR		0x268
 #define	PUB_DX3MDLR0_REG_ADDR		0x2A8
+
+#define PUB_DX0MDLR1_REG_ADDR		0x1E9
 
 #define PUB_DX0GTR0_REG_ADDR		0x1F0
 #define PUB_DX1GTR0_REG_ADDR		0x230
@@ -990,6 +993,16 @@ union pub_dx_x_lcdlr4 {
 	} fields;
 };
 
+union pub_dx_x_lcdlr5 {
+	u32	reg;
+	struct {
+		u32 reserved25_31:7;
+		u32 x4dqsgsd:9;
+		u32 reserved9_15:7;
+		u32 dqsgsd:9;
+	} fields;
+};
+
 union pub_dx_x_bdlr0 {
 	u32	reg;
 	struct {
@@ -1056,6 +1069,15 @@ union pub_dx_x_mdlr0 {
 		u32 tprd:9;
 		u32 reserved:7;
 		u32	iprd:9;
+	} fields;
+};
+
+
+union pub_dx_x_mdlr1 {
+	u32	reg;
+	struct {
+		u32 reserved9_31:23;
+		u32 mdld:9;
 	} fields;
 };
 
@@ -1461,14 +1483,20 @@ union pub_acmdlr0 {
 	u32	reg;
 	struct {
 		u32	reserved25_31:7;
-		u32	trpd:9;
+		u32	tprd:9;
 		u32	reserved9_15:7;
 		u32	iprd:9;
 	} fields;
 };
 
 
-
+union pub_acmdlr1 {
+	u32	reg;
+	struct {
+		u32 reserved9_31:23;
+		u32 mdld:9;
+	} fields;
+};
 
 union pub_pgsr0 {
 	u32 reg;

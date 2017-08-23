@@ -48,6 +48,7 @@ int	g_EZsim_mode = 0;
 #define VREF_PER_RANK
 
 static int skip_mc_mask = 0;
+static int do_htol_wa = true;
 bool g_int_lb_mode = false;
 static void configure_relax_mc(void);
 static void set_ddr_double_refresh(void);
@@ -1896,6 +1897,7 @@ static void get_ddr_parameters(void)
 	char *env_size;
 	char *env_skip_mc;
 	char *env_double_refresh;
+	int  htol_wa;
 	union crg_gen_purp_1 gen_purp_1;
 	union crg_gen_purp_2 gen_purp_2;
 	u32 boot_cfg, package = 8;
@@ -1912,6 +1914,10 @@ static void get_ddr_parameters(void)
 	env_freq = getenv("ddr_freq");
 	if(env_freq)
 		current_ddr_params.clock_frequency = simple_strtoul(env_freq, NULL, 10);
+
+	htol_wa = getenv_yesno("htol_wa");
+	if(htol_wa == -1 || htol_wa == 0)
+		do_htol_wa = false;
 
 	if(current_ddr_params.clock_frequency <= 400)
 		current_ddr_params.pll_freq = DDR_400_MHz;
@@ -2351,6 +2357,75 @@ static void print_fail_pup_dump(u32 block_idx)
 	return;
 }
 
+static int dll_calibration_fail_recovery(void)
+{
+	union pub_dx_x_mdlr1 dx_x_mdlr1[4];
+	union pub_acmdlr1 acmdlr1;
+	union pub_acmdlr0 acmdlr0;
+	union pub_pgcr0 pgcr0;
+	union pub_dx_x_mdlr0 dx_x_mdlr0[4];
+	union pub_dx_x_lcdlr1 dx_x_lcdlr1[4];
+	union pub_dx_x_lcdlr3 dx_x_lcdlr3[4];
+	union pub_dx_x_lcdlr4 dx_x_lcdlr4[4];
+	union pub_dx_x_lcdlr5 dx_x_lcdlr5[4];
+	union pub_pgsr0 pgsr0;
+	int index, half_ui;
+	u32 ifc;
+
+	for (ifc = 0; ifc < EMEM_MC_NUM_OF_BLOCKS; ifc++) {
+		acmdlr1.reg = emem_mc_indirect_reg_read_synop(
+					emem_mc_block_id[ifc], PUB_ACMDLR1_REG_ADDR);
+		for(index = 0; index < 4; index++ ) {
+			dx_x_mdlr1[index].reg = emem_mc_indirect_reg_read_synop(
+						emem_mc_block_id[ifc], PUB_DX0MDLR1_REG_ADDR + (0x40 * index));
+		}
+		pgcr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_PGCR0_REG_ADDR);
+		pgcr0.fields.dltmode = 1;
+		emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_PGCR0_REG_ADDR, pgcr0.reg);
+		udelay(10);
+		pgcr0.fields.dltmode = 0;
+		emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_PGCR0_REG_ADDR, pgcr0.reg);
+		udelay(10);
+		pgcr0.fields.initfsmbyp = 1;
+		emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_PGCR0_REG_ADDR, pgcr0.reg);
+		udelay(10);
+		pgcr0.fields.initfsmbyp = 0;
+		emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_PGCR0_REG_ADDR, pgcr0.reg);
+		udelay(10);
+		pgsr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_PGSR0_REG_ADDR);
+		if(pgsr0.fields.idone != 1) {
+			error("dll_calibration_fail_recovery: idone bit not set. block %d  PGSR0:0x%08X", ifc, pgsr0.reg);
+			return -EBUSY;
+		}
+		acmdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_ACMDLR0_REG_ADDR);
+		acmdlr0.fields.iprd = acmdlr1.fields.mdld;
+		acmdlr0.fields.tprd = acmdlr1.fields.mdld;
+		emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_ACMDLR0_REG_ADDR, acmdlr0.reg);
+		for(index = 0; index < 4; index++ ) {
+			dx_x_mdlr0[index].fields.iprd = dx_x_mdlr1[index].fields.mdld;
+			dx_x_mdlr0[index].fields.tprd = dx_x_mdlr1[index].fields.mdld;
+			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_DX0MDLR0_REG_ADDR + (index*0x40), dx_x_mdlr0[index].reg);
+		}
+		for(index = 0; index < 4; index++ ) {
+			half_ui = DDR_ROUND_UP( dx_x_mdlr1[index].fields.mdld, 2 );
+			dx_x_lcdlr1[index].reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_DX0LCDLR1_REG_ADDR + (index*0x40));
+			dx_x_lcdlr1[index].fields.wdqd = half_ui;
+			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_DX0LCDLR1_REG_ADDR + (index*0x40), dx_x_lcdlr1[index].reg);
+			dx_x_lcdlr3[index].reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_DX0LCDLR3_REG_ADDR + (index*0x40));
+			dx_x_lcdlr3[index].fields.rdqsd = half_ui;
+			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_DX0LCDLR3_REG_ADDR + (index*0x40), dx_x_lcdlr3[index].reg);
+			dx_x_lcdlr4[index].reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_DX0LCDLR4_REG_ADDR + (index*0x40));
+			dx_x_lcdlr4[index].fields.rdqsnd = half_ui;
+			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_DX0LCDLR4_REG_ADDR + (index*0x40), dx_x_lcdlr4[index].reg);
+			dx_x_lcdlr5[index].reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_DX0LCDLR5_REG_ADDR + (index*0x40));
+			dx_x_lcdlr5[index].fields.dqsgsd = half_ui;
+			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_DX0LCDLR5_REG_ADDR + (index*0x40), dx_x_lcdlr5[index].reg);
+		}
+	}
+	return 0;
+}
+
+
 int phy_init(void)
 {
 	u32 block, value, i;
@@ -2381,7 +2456,6 @@ int phy_init(void)
 						emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
 			error("phy init: timeout in block %d, PGSR0 status = 0x%08X", block, pgsr0.reg);
 			print_fail_pup_dump(block);
-			return -EBUSY;
 		}
 
 		pgsr0.reg = emem_mc_indirect_reg_read_synop(
@@ -2392,17 +2466,17 @@ int phy_init(void)
 				(pgsr0.fields.dcdone != 1) ||
 				(pgsr0.fields.zcdone != 1)) {
 					error("phy init: found done bits not set in block %d, PGSR0 status = 0x%08X", block, pgsr0.reg);
-					err_exit = true;
+					if((pgsr0.fields.idone = 0) && (pgsr0.fields.dcdone = 0) && (pgsr0.fields.pldone == 1) && (pgsr0.fields.zcdone == 1))
+						if(dll_calibration_fail_recovery() != 0)
+							err_exit = true;
+					else
+						err_exit = true;
 			}
 		if (!g_EZsim_mode)
 			if ((pgsr0.fields.zcerr != 0)) {
 					error("phy init: found error bit set in block %d, PGSR0 status = 0x%08X", block, pgsr0.reg);
 					err_exit = true;
 			}
-		if (err_exit) {
-			print_fail_pup_dump(block);
-			return -EBUSY;
-		}
 
 		zqcr.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block],
 							PUB_ZQCR_REG_ADDR);
@@ -2416,6 +2490,11 @@ int phy_init(void)
 
 		emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],
 						PUB_PIR_REG_ADDR, 0x40001);
+
+                if (err_exit) {
+                        print_fail_pup_dump(block);
+                        return -EBUSY;
+                }
 	}
 
 	return 0;
