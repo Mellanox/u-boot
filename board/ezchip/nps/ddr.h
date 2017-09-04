@@ -93,7 +93,6 @@
 #define	  GET_MRS_DATA_0(__num, __data)\
 		((MR_CMD << MR_CMD_OFFSET) + (__num << MR_NUM_OFFSET) + __data)
 
-
 #define	  GET_MRS_DATA_1(__last)\
 		((__last << MR_NUM_OFFSET) + 0x1000 + MR_DELAY)
 
@@ -277,7 +276,7 @@
 #define PUB_RANKIDR_REG_ADDR		0x137
 #define PUB_ACBDLR0_REG_ADDR		0x150
 #define PUB_ACMDLR0_REG_ADDR		0x168
-#define PUB_ACMDLR1_REG_ADDR		0x168
+#define PUB_ACMDLR1_REG_ADDR		0x169
 #define PUB_IOVCR0_REG_ADDR		0x148
 #define	PUB_VTCR0_REG_ADDR		0x14A
 #define	PUB_VTCR1_REG_ADDR		0x14B
@@ -286,6 +285,8 @@
 #define	PUB_ZQ1PR_REG_ADDR		0x1A5
 
 #define	PUB_DX0GCR0_REG_ADDR		0x1C0
+
+#define	PUB_DX0GCR3_REG_ADDR		0x1C3
 
 #define	PUB_DX0GCR4_REG_ADDR		0x1C4
 #define	PUB_DX1GCR4_REG_ADDR		0x204
@@ -368,6 +369,8 @@
 #define PUB_DX1GTR0_REG_ADDR		0x230
 #define PUB_DX2GTR0_REG_ADDR		0x270
 #define PUB_DX3GTR0_REG_ADDR		0x2B0
+
+#define PUB_DX0GSR0_REG_ADDR		0x1F8
 
 #define	PUB_BISTMSKR1_REG_ADDR		0x103
 #define	PUB_VTDR_REG_ADDR		0x08F
@@ -934,8 +937,8 @@ union pub_pgcr6 {
 		u32 csnbvt:1;
 		u32 ckbvt:1;
 		u32 reserved:6;
-		u32	fvt:1;
-		u32	inhvt:1;
+		u32 fvt:1;
+		u32 inhvt:1;
 	} fields;
 };
 
@@ -962,16 +965,25 @@ union pub_pgcr7 {
 	} fields;
 };
 
+union pub_dx_x_lcdlr0 {
+	u32	reg;
+	struct {
+		u32 reserved25_31:7;
+		u32 x4wld:9;
+		u32 reserved9_15:7;
+		u32 wld:9;
+	} fields;
+};
+
 union pub_dx_x_lcdlr1 {
 	u32	reg;
 	struct {
 		u32 reserved2:7;
 		u32 x4wdqd:9;
 		u32 reserved:7;
-		u32	wdqd:9;
+		u32 wdqd:9;
 	} fields;
 };
-
 
 union pub_dx_x_lcdlr3 {
 	u32	reg;
@@ -1498,6 +1510,25 @@ union pub_acmdlr1 {
 	} fields;
 };
 
+union pub_dx_x_gsr0{
+	u32 reg;
+	struct {
+		u32 reserved31:1;
+		u32 wldq:1;
+		u32 reserved26_29:4;
+		u32 gdqsprd:9;
+		u32 dplock:1;
+		u32 wlprd:9;
+		u32 wlerr:1;
+		u32 wldone:1;
+		u32 wlcal:1;
+		u32 gdqscal:1;
+		u32 rdqsncal:1;
+		u32 rdqscal:1;
+		u32 wdqcal:1;
+	} fields;
+};
+
 union pub_pgsr0 {
 	u32 reg;
 	struct {
@@ -1625,6 +1656,28 @@ union pub_dx_n_bdlr2 {
 	} fields;
 };
 
+union pub_dx_n_gcr3 {
+	u32 reg;
+	struct {
+		u32 reserved30_31:2;
+		u32 rdbvt:1;
+		u32 wdbvt:1;
+		u32 rglvt:1;
+		u32 rdlvt:1;
+		u32 wdlvt:1;
+		u32 wllvt:1;
+		u32 reserved16_23:8;
+		u32 dmoemode:2;
+		u32 dmtemode:2;
+		u32 dmpdrmode:2;
+		u32 dmpddmode:2;
+		u32 dsoemode:2;
+		u32 dstemode:2;
+		u32 dspdrmode:2;
+		u32 dspddmode:2;
+	} fields;
+};
+
 union pub_dx_n_gcr4 {
 	u32 reg;
 	struct {
@@ -1748,6 +1801,9 @@ void set_pir_val(u32 pir_val);
 #define init_ddr_phy_record_DB()
 #else
 extern void init_ddr_phy_record_DB(void);
+int do_sw_wl(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+int do_calib_fail_recovery(cmd_tbl_t *cmdtp, int flag, int argc,
+                                                        char * const argv[]);
 int do_print_ddr_config(cmd_tbl_t *cmdtp, int flag, int argc,
 							char * const argv[]);
 int do_ddr_pause(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);

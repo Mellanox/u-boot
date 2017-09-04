@@ -339,6 +339,18 @@ U_BOOT_CMD(
 );
 
 U_BOOT_CMD(
+        wl, 3, 0, do_sw_wl,
+        "SW write leveling",
+        "Usage: wl <wl_mr1_data>"
+);
+
+U_BOOT_CMD(
+        calib, 1, 0, do_calib_fail_recovery,
+        "Calibration recovery",
+        ""
+);
+
+U_BOOT_CMD(
 	ddr_pause, 2, 0, do_ddr_pause,
 	"Enable/Disable ddr_pause",
 	"1(Enable)/0(Disable)"
