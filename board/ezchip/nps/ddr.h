@@ -265,6 +265,12 @@
 #define	PUB_MR5_REG_ADDR		0x65
 #define	PUB_MR6_REG_ADDR		0x66
 #define	PUB_DTCR0_REG_ADDR		0x80
+#define PUB_DCUAR_REG_ADDR		0x0C0
+#define PUB_DCUDR_REG_ADDR		0x0C1
+#define PUB_DCURR_REG_ADDR		0x0C2
+#define PUB_DCULR_REG_ADDR		0x0C3
+#define PUB_DCUSR0_REG_ADDR		0x0C6
+#define PUB_DCUSR1_REG_ADDR		0x0C7
 #define PUB_BISTRR_REG_ADDR		0x100
 #define PUB_BISTWCR_REG_ADDR		0x101
 #define PUB_BISTLSR_REG_ADDR		0x105
@@ -285,6 +291,7 @@
 #define	PUB_ZQ1PR_REG_ADDR		0x1A5
 
 #define	PUB_DX0GCR0_REG_ADDR		0x1C0
+#define	PUB_DX0GCR2_REG_ADDR		0x1C2
 
 #define	PUB_DX0GCR3_REG_ADDR		0x1C3
 
@@ -939,6 +946,7 @@ union pub_pgcr6 {
 		u32 reserved:6;
 		u32 fvt:1;
 		u32 inhvt:1;
+
 	} fields;
 };
 
@@ -965,6 +973,67 @@ union pub_pgcr7 {
 	} fields;
 };
 
+union pub_dcuar {
+	u32	reg;
+	struct {
+		u32 reserved20_31:12;
+		u32 csaddr_r:4;
+		u32 cwaddr_r:4;
+		u32 atype:1;
+		u32 inca:1;
+		u32 csel:2;
+		u32 cs_addrw:4;
+		u32 cw_addrw:4;
+	} fields;
+};
+
+union pub_dcurr {
+	u32 reg;
+	struct {
+		u32 reserved24_31:8;
+		u32 xcen:1;
+		u32 rcen:1;
+		u32 scof:1;
+		u32 sonf:1;
+		u32 nfail:8;
+		u32 eaddr:4;
+		u32 saddr:4;
+		u32 dinst:4;
+	} fields;
+};
+
+union pub_dcusr0 {
+	u32 reg;
+	struct {
+		u32 reserved3_31:29;
+		u32 cfull:1;
+		u32 cfail:1;
+		u32 rdone:1;
+	} fields;
+};
+	
+union pub_dcusr1 {
+	u32 reg;
+	struct {
+		u32 lpcnt:8;
+		u32 flcnt:8;
+		u32 rdcnt:16;
+	} fields;
+};
+	
+union pub_dculr {
+	u32 reg;
+	struct {
+		u32 xleaddr:4;
+		u32 reserved18_27:10;
+		u32 ida:1;
+		u32 linf:1;
+		u32 lcnt:8;
+		u32 leaddr:4;
+		u32 lsaddr:4;
+	} fields;
+};
+
 union pub_dx_x_lcdlr0 {
 	u32	reg;
 	struct {
@@ -982,6 +1051,16 @@ union pub_dx_x_lcdlr1 {
 		u32 x4wdqd:9;
 		u32 reserved:7;
 		u32 wdqd:9;
+	} fields;
+};
+
+union pub_dx_x_lcdlr2 {
+	u32	reg;
+	struct {
+		u32 reserved25_31:7;
+		u32 x4dqsgd:9;
+		u32 reserved9_15:7;
+		u32 dqsgd:9;	
 	} fields;
 };
 
@@ -1479,6 +1558,40 @@ union pub_mr2_ddr4 {
 	} fields;
 };
 
+union pub_mr3_ddr4 {
+	u32 reg;
+	struct {
+		u32 reserved13_31:19;
+		u32 mpr_read:2;
+		u32 wl_crc:2;
+		u32 fg_refresh:3;
+		u32 ts_read:1;
+		u32 pdam:1;
+		u32 gd_mode:1;
+		u32 mpr_op:1;
+		u32 mpr_pgsel:2;
+	} fields;
+};
+
+union pub_mr4_ddr4 {
+	u32 reg;
+	struct {
+		u32 reserved14_31:18;
+		u32 ppr:1;
+		u32 write_pr:1;
+		u32 read_pr:1;
+		u32 read_pr_train:1;
+		u32 sref_abort:1;
+		u32 cs2cmd_lm:3;
+		u32 sppr:1;
+		u32 ivref_mon:1;
+		u32 tcref_mode:1;
+		u32 tcref_range:1;
+		u32 max_pd:1;
+		u32 rfu:1;
+	} fields;
+};
+
 union pub_mr6 {
 	u32	reg;
 	struct {
@@ -1656,6 +1769,15 @@ union pub_dx_n_bdlr2 {
 	} fields;
 };
 
+
+union pub_dx_n_gcr2 {
+	u32 reg;
+	struct {
+		u32 dxoemode:16;
+		u32 dxtemode:16;
+	} fields;
+};
+
 union pub_dx_n_gcr3 {
 	u32 reg;
 	struct {
@@ -1763,6 +1885,20 @@ union pub_schcr1 {
 		u32 reserved3:1;
 		u32 allrank:1;
 		u32 reserved0_1:2;
+	} fields;
+};
+
+union pub_dx_x_gtr0 {
+	u32 reg;
+	struct {
+		u32 reserved28_31:4;
+		u32 x4wlsl:4;
+		u32 reserved20_23:4;
+		u32 wlsl:4;
+		u32 reserved13_15:3;
+		u32 x4dgsl:5;
+		u32 reserved5_7:3;
+		u32 dgsl:5;		
 	} fields;
 };
 

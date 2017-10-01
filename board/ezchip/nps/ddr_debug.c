@@ -3925,6 +3925,7 @@ static void d2_write_eye_plotting(int block, bool print_enable)
 
 static void d2_read_eye_plotting(int block, bool print_enable)
 {
+#if 0
 	u32 bl_index, bl_iprd, bl_tprd, bl_tap_fantaSec, tck_index, rank_index;
 	u32 rdqsd_tr_res, rdqsnd_tr_res, vref_tr_res;
 	u32 phy_side, phy_num, block_idx, mc_mask;
@@ -4443,10 +4444,12 @@ static void d2_read_eye_plotting(int block, bool print_enable)
 	}
 	if(print_enable)
 		printf("\n");
+#endif
 }
 
 int do_ddr_diagnostic(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
+#if 0
 	u32 row, col, phy_index, ifc, bit, reg_data, phy;
 	u32 bl_tap_num[BYTE_LANE_LEN][BYTE_LANES_NUM * EMEM_MC_NUM_OF_BLOCKS];
 	u32 bl_tap_mod[BYTE_LANE_LEN][BYTE_LANES_NUM * EMEM_MC_NUM_OF_BLOCKS];
@@ -4609,7 +4612,7 @@ int do_ddr_diagnostic(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	printf("\nTx\tright\teye\tWrite_2d\t");
 	for(row = 0; row < BYTE_LANES_NUM * EMEM_MC_NUM_OF_BLOCKS; row++)
 		printf("%u\t", eye_max[row]);
-
+#endif
 	return 0;
 }
 
