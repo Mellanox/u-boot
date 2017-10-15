@@ -2561,7 +2561,7 @@ static int sw_read_dqs(u32 block)
 	u32 byte_first_pass, byte_last_pass, repeat_count, dqsg_byte;
 	bool error_msg = false, set_qsgerr = false;
 
-	printf("==== sw_read_dqs  ====\n");
+	printf("==== sw_read_dqs ====\n");
 	for( mc = 0; mc < 2; mc++ ) {
 		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
 				mc,GET_MRS_DATA_0(3, (mr3_ddr4.reg + 0x4)), GET_MRS_DATA_1(1));
@@ -2632,10 +2632,15 @@ static int sw_read_dqs(u32 block)
 					if((dcusr1.fields.rdcnt != ( 2 * repeat_count )) && (byte_first_pass == 1) && (byte_last_pass == 0)) { /* u */
 						byte_last_pass = 1; /* x */
 						byte_qsgdone = 1;
+						printf("byte_dgsl = %d byte_dqsgd = %d\n", byte_dgsl, byte_dqsgd);
 						break;
 					}
-				} else
+				} else {
 					byte_first_pass = 1; /* w */
+					printf("byte_dgsl = %d byte_dqsgd = %d\n", byte_dgsl, byte_dqsgd);
+					byte_dgsl++;
+					pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl);
+				}
 				if(((byte_first_pass == 1) && (byte_last_pass == 1)) || (byte_dqsgd < dqsg_limit)) { /* y & z */
 					byte_dqsgd++; /* ee */
 					continue;
@@ -2656,26 +2661,30 @@ static int sw_read_dqs(u32 block)
 				error_msg = true;
 			else {
 				if (byte_dgsl != 0) {
+					printf("byte_dgsl = %d byte_dqsgd = %d\n", byte_dgsl, byte_dqsgd);
 					byte_dgsl--;
-					pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl);
+					pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl); /* 18 */
 					error_msg = false;
+					printf("byte_dgsl = %d byte_dqsgd = %d\n", byte_dgsl, byte_dqsgd);
 				} else if(byte_dqsgd > (dqsg_limit / 2)) { /*19*/
+					printf("byte_dgsl = %d byte_dqsgd = %d\n", byte_dgsl, byte_dqsgd);
 					byte_dqsgd -= (dqsg_limit/2 );
+					printf("byte_dgsl = %d byte_dqsgd = %d\n", byte_dgsl, byte_dqsgd);
 					pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + addr_offset, dx_x_lcdlr2, dqsgd, byte_dqsgd);
 					error_msg = false;
 				}
 			}
-			if(error_msg) {
+			if(error_msg) { /* 24 */
 				error("Read DQS failure for byte index %d", dqsg_byte);
 				error("The Maximum system latency reached without finding first pass or the Read DQS Gate position cannot be decremented by 1 UI");
 			}
-			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x0);
+			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x0); /* 25 */
 
 	               /*******************/
 			dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + addr_offset);
-			printf("dx_%d_lcdlr2 = 0x%x\n", dqsg_byte, dx_x_lcdlr2.reg);
+			printf("dx_%d_lcdlr2 = 0x%x in PHY interface %d \n", dqsg_byte, dx_x_lcdlr2.reg, block);
 			dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + addr_offset);
-			printf("dx_%d_gtr0 = 0x%x\n", dqsg_byte, dx_x_gtr0.reg);
+			printf("dx_%d_gtr0 = 0x%x in PHY interface %d\n", dqsg_byte, dx_x_gtr0.reg, block);
 		}
 	}
 	pub_read_modify_write(block, PUB_DXCCR_REG_ADDR, dxccr, qscnten, 1);
@@ -2843,11 +2852,11 @@ int	ddr_training(void)
 	u32 wl_mr1_rtt_nom_set, wl_mr2_rtt_wr_mask;
 	union 	pub_dx_x_lcdlr0 dx_x_lcdlr0;
 	union 	pub_dx_x_gtr0 dx_x_gtr0;
+	union pub_dx_x_lcdlr0 dx_x_lcdlr2;
 
 	if (get_debug())
 		printf("==== ddr_training ====\n");
 
-	set_debug(true);
 	wl_mr1_rtt_nom_set = IS_DDR4_DEVICE(current_ddr_params.type) ?
 				0x0600:0x0004;
 	wl_mr2_rtt_wr_mask = IS_DDR4_DEVICE(current_ddr_params.type) ?
@@ -2943,8 +2952,7 @@ int	ddr_training(void)
 			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],
 							PUB_PIR_REG_ADDR, 0x4F801);
 		else
-			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],
-							PUB_PIR_REG_ADDR, 0x4FC01);
+			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x4FC01);
 
 		for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
 			udelay(100);
@@ -2993,9 +3001,14 @@ int	ddr_training(void)
 						current_ddr_params.clock_frequency, block, pgsr0.reg);
 			}
 		}
+		for(i=0;i<4;i++) {
+			dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (i*0x40));
+			printf("dx_%d_lcdlr2 = 0x%x in PHY interface %d \n", i, dx_x_lcdlr2.reg, block);
+			dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (i*0x40));
+			printf("dx_%d_gtr0 = 0x%x PHY interface %d\n", i, dx_x_gtr0.reg, block);
+		}
 	}
 
-	set_debug(false);
 	if (!status) {
 		print_fail_pup_dump(failed_block);
 		return -1;
