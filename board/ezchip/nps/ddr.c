@@ -2779,7 +2779,6 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 					emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (wl_byte * 0x40));
 				wl_validation_window  = DIV_ROUND_CLOSEST( 5 * dx_x_mdlr0[wl_byte].fields.iprd, 8);
 				for ( ; wldly < 0x1FF; wldly++) {
-					printf("wldly = %d\n", wldly);
 					dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
 								PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
 					dx_x_lcdlr0[wl_byte].fields.wld = wldly;
@@ -2850,9 +2849,10 @@ int	ddr_training(void)
 	union pub_pgsr0 pgsr0;
 	bool status = true, sw_wl = false, sw_rdqs = false;
 	u32 wl_mr1_rtt_nom_set, wl_mr2_rtt_wr_mask;
-	union 	pub_dx_x_lcdlr0 dx_x_lcdlr0;
-	union 	pub_dx_x_gtr0 dx_x_gtr0;
-	union pub_dx_x_lcdlr0 dx_x_lcdlr2;
+	union	pub_dx_x_lcdlr0 dx_x_lcdlr0;
+	union	pub_dx_x_gtr0 dx_x_gtr0;
+	union	pub_dx_x_lcdlr0 dx_x_lcdlr2;
+	union	pub_dx_x_mdlr0 dx_x_mdlr0;
 
 	if (get_debug())
 		printf("==== ddr_training ====\n");
@@ -2915,7 +2915,7 @@ int	ddr_training(void)
 			}
 		}
 		/*******************/
-		printf(" check write leveling results\n");
+		printf("Write leveling results for PHY interface %d\n\n", block);
 		for ( i = 0; i < 4; i++) {
 			dx_x_lcdlr0.reg = emem_mc_indirect_reg_read_synop(
 						emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (i*0x40));
@@ -2923,6 +2923,9 @@ int	ddr_training(void)
 			dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(
 						emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (i*0x40));
 			printf("dx_%d_gtr0 = 0x%x\n", i, dx_x_gtr0.reg);
+			dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(
+						emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (i*0x40));
+			printf("dx_%d_mdlr0 = 0x%x\n", i, dx_x_mdlr0.reg);
 		}
 		for (mc = 0; mc < NUMBER_OF_MC_IN_BLOCK; mc++) {
 			emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
@@ -3001,6 +3004,7 @@ int	ddr_training(void)
 						current_ddr_params.clock_frequency, block, pgsr0.reg);
 			}
 		}
+		printf("Read DQS results for PHY interface %d\n\n", block);
 		for(i=0;i<4;i++) {
 			dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (i*0x40));
 			printf("dx_%d_lcdlr2 = 0x%x in PHY interface %d \n", i, dx_x_lcdlr2.reg, block);
