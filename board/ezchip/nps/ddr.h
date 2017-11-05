@@ -265,6 +265,7 @@
 #define	PUB_MR5_REG_ADDR		0x65
 #define	PUB_MR6_REG_ADDR		0x66
 #define	PUB_DTCR0_REG_ADDR		0x80
+#define	PUB_DTCR1_REG_ADDR		0x81
 #define PUB_DCUAR_REG_ADDR		0x0C0
 #define PUB_DCUDR_REG_ADDR		0x0C1
 #define PUB_DCURR_REG_ADDR		0x0C2
@@ -1309,6 +1310,22 @@ union pub_dtcr0 {
 		u32	dtmpr:1;
 		u32	reserved4_5:2;
 		u32	dtrptn:4;
+	} fields;
+};
+
+union pub_dtcr1 {
+	u32	reg;
+	struct {
+		u32	ranken:16;
+		u32	dtrank:4;
+		u32	reserved11:1;
+		u32	rdlvlgdiff:3;
+		u32	reserved7:1;
+		u32	rdlvlgs:3;
+		u32	reserved3:1;
+		u32	rdprmvl_trn:1;
+		u32	rdlvlen:1;
+		u32	bsten:1;
 	} fields;
 };
 
