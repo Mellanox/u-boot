@@ -2558,7 +2558,7 @@ static int sw_read_dqs(u32 block)
 	u32 dqsg_limit, byte_dqsgd, byte_qsgdone, byte_qsgerr;
 	u32 byte_first_pass, byte_last_pass, repeat_count, dqsg_byte;
 	bool error_msg = false, set_qsgerr = false;
-	bool do17 = true;
+	bool do17 = false;
 
 	printf("==== sw_read_dqs ====\n");
 	for( mc = 0; mc < 2; mc++ ) {
@@ -2639,6 +2639,9 @@ static int sw_read_dqs(u32 block)
 					printf("FIRST PASS : byte %d byte_dgsl = %d byte_dqsgd = %d\n", dqsg_byte, byte_dgsl, byte_dqsgd);
 					byte_dgsl++;
 					pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl);
+					byte_last_pass = 1; /* x */
+					byte_qsgdone = 1;
+					break;
 				}
 				if(((byte_first_pass == 1) && (byte_last_pass == 1)) || (byte_dqsgd < dqsg_limit)) { /* y & z */
 					byte_dqsgd++; /* ee */
@@ -2659,7 +2662,6 @@ static int sw_read_dqs(u32 block)
 				error_msg = true;
 			else {
 				if (byte_dgsl != 0) {
-					byte_dgsl--;
 					if ( do17 ) {
 						if ( byte_dqsgd >= (dqsg_limit / 2)) {
 							pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl); /* 18 */
@@ -2959,7 +2961,7 @@ int	ddr_training(void)
 					dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (i*0x40));
 					printf("dx_%d_lcdlr2 = 0x%x in PHY interface %d\n", i, dx_x_lcdlr2.reg, block);
 					dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (i*0x40));
-					printf("dx_%d_gtr0 = 0x%x PHY interface %d\n", i, dx_x_gtr0.reg, block);
+					printf("dx_%d_gtr0 = 0x%x in PHY interface %d\n", i, dx_x_gtr0.reg, block);
 					dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (i*0x40));
 					printf("dx_%d_mdlr0 = 0x%x in PHY interface %d\n", i, dx_x_mdlr0.reg, block);
 				}
@@ -2970,9 +2972,16 @@ int	ddr_training(void)
 			else if(sw_rdqs)
 				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],
 								PUB_PIR_REG_ADDR, 0x4F801);
-			else
-				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, (iter == 0)?0x40401:0x4F801);
-			
+			else {
+				if ( iter == 0 ) {
+					pub_dual_read_modify_write( block, PUB_DTCR0_REG_ADDR, dtcr0, dtcmpd, 0x0, rfshdt, 0x0);
+					pub_read_modify_write( block, PUB_DTCR0_REG_ADDR, dtcr0, dtmpr, 0x1);
+					pub_dual_read_modify_write( block, PUB_DTCR1_REG_ADDR, dtcr1, bsten, 0x1, rdlvlen, 0x0);
+					pub_read_modify_write( block, PUB_DTCR1_REG_ADDR, dtcr1, rdprmvl_trn, 0x1);
+					emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x40401);
+				} else
+					emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x4F801);
+			}
 			for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
 				udelay(100);
 				pgsr0.reg = emem_mc_indirect_reg_read_synop(
@@ -3021,7 +3030,7 @@ int	ddr_training(void)
 				}
 			}
 			if ( iter == 0 && !sw_rdqs) 
-				printf("\nRead DQS results for PHY interface %d\n\n", block);
+				printf("\nRead first DQS results for PHY interface %d\n\n", block);
 			else
 				printf("\nPost training results for PHY interface %d\n\n", block);
 			for ( i=0; i<4; i++ ) {
@@ -3030,15 +3039,57 @@ int	ddr_training(void)
 					dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (i*0x40));
 					printf("dx_%d_lcdlr2 = 0x%x in PHY interface %d\n", i, dx_x_lcdlr2.reg, block);
 					dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (i*0x40));
-					printf("dx_%d_gtr0 = 0x%x PHY interface %d\n", i, dx_x_gtr0.reg, block);
+					printf("dx_%d_gtr0 = 0x%x in PHY interface %d\n", i, dx_x_gtr0.reg, block);
+					dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (i*0x40));
+					printf("dx_%d_mdlr0 = 0x%x in PHY interface %d\n", i, dx_x_mdlr0.reg, block);
+			}
+			if ( iter == 0 && !sw_rdqs) {
+				pub_read_modify_write( block, PUB_DTCR1_REG_ADDR, dtcr1, bsten, 0x0);
+				pub_read_modify_write( block, PUB_DTCR1_REG_ADDR, dtcr1, rdlvlen , 0x1);
+				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x40401);
+				for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
+					udelay(100);
+					pgsr0.reg = emem_mc_indirect_reg_read_synop(
+						emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
+					if (pgsr0.fields.idone == 1)
+							break;
+				}
+				if (i == INDIRECT_RETRY_NUM) {
+					error("ddr_training: full data training timeout (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
+							current_ddr_params.clock_frequency, block, pgsr0.reg);
+					status = false;
+					print_fail_pup_dump(block);
+					return -EBUSY;
+				}
+				pgsr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
+				if (pgsr0.fields.qsgdone != 1 ) {
+					error("ddr_training: full data training found done bits not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
+										current_ddr_params.clock_frequency, block, pgsr0.reg);
+					failed_block = block;
+					status = false;
+				}
+				if (pgsr0.fields.qsgerr != 0) {
+					error("ddr_training: full data training found error bits set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
+											current_ddr_params.clock_frequency, block, pgsr0.reg);
+					failed_block = block;
+					status = false;
+				}
+				printf("\nRead second DQS results for PHY interface %d\n\n", block);
+				for ( i=0; i<4; i++ ) {
+					dx_x_lcdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (i*0x40));
+					printf("dx_%d_lcdlr0 = 0x%x in PHY interface %d\n", i, dx_x_lcdlr0.reg, block);
+					dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (i*0x40));
+					printf("dx_%d_lcdlr2 = 0x%x in PHY interface %d\n", i, dx_x_lcdlr2.reg, block);
+					dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (i*0x40));
+					printf("dx_%d_gtr0 = 0x%x in PHY interface %d\n", i, dx_x_gtr0.reg, block);
 					dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (i*0x40));
 					printf("dx_%d_mdlr0 = 0x%x in PHY interface %d\n", i, dx_x_mdlr0.reg, block);
 				}
+			}
 		}
 		if ( sw_rdqs )
 			break;
 	}
-
 	if (!status) {
 		print_fail_pup_dump(failed_block);
 		return -1;
