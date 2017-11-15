@@ -2875,11 +2875,14 @@ static void print_reg(char *name, u32 address, u32 val) {
 
 void print_pub_dump(u32 block_idx)
 {
-	u32 block, reg_idx, read_val;
+	u32 block, reg_idx, read_val, register_cnt = 0;
 
 	block = emem_mc_block_id[block_idx];
 
 	for (reg_idx = 0; reg_idx <= (PUB_DDR_PHY_REGS_NUMBER - 1); reg_idx++) {
+		while ( PUB_RECORD_GET(block_idx, reg_idx)->address != register_cnt )
+			print_reg("Reserved", register_cnt++, 0x0);
+		register_cnt++;
 		read_val = emem_mc_indirect_reg_read_synop(block,
 				PUB_RECORD_GET(block_idx, reg_idx)->address);
 		print_reg(PUB_RECORD_GET(block_idx, reg_idx)->name,

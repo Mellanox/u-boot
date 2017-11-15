@@ -79,6 +79,10 @@
 #define NPC_CRG_BLOCK_ID		0x38
 #define NPC_CRG_REG_MTM_CLK_0		0x90
 
+#define GLOBAL_0_BLOCK_ID		0x484
+#define GLOBAL_0_REG_GPIO0_0_OUT	0x203
+#define GLOBAL_0_REG_GPIO0_0_DRV	0x201
+
 void configure_l2c(void);
 void configure_mtm(void);
 void configure_ciu(void);
