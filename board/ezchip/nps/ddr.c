@@ -2537,6 +2537,8 @@ static int sw_read_dqs(u32 block)
 	union pub_dcusr0 dcusr0;
 	union pub_dcusr1 dcusr1;
 	union pub_dx_x_mdlr0 dx_x_mdlr0;
+	/* union pub_dx_x_lcdlr2 dx_x_lcdlr2 */;
+
 	int i, j;
 	u32 byte_dgsl, mc, bl_index, addr_offset, dqsg_rank;
 	u32 dqsg_limit, byte_dqsgd, byte_qsgdone, byte_qsgerr;
@@ -2546,6 +2548,28 @@ static int sw_read_dqs(u32 block)
 	u32 mr_data_0, mr_data_1;
 
 	sw_rdqs_nrml = (getenv_yesno("sw_rdqs_nrml") == 1);
+
+	/* trial 3 29.11 * /
+	{
+		pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 1);
+
+		pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (0*0x40), dx_x_gtr0, dgsl, 5);
+		pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (0*0x40), dx_x_lcdlr2, dqsgd, 0x2e);
+
+		pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (1*0x40), dx_x_gtr0, dgsl, 6);
+		pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (1*0x40), dx_x_lcdlr2, dqsgd, 0x17);
+
+		pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (2*0x40), dx_x_gtr0, dgsl, / * 3 * / 5); / * trial 3b * /
+		pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (2*0x40), dx_x_lcdlr2, dqsgd, / * 0x79 * / 7 );
+
+		pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (3*0x40), dx_x_gtr0, dgsl, 5);
+		pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (3*0x40), dx_x_lcdlr2, dqsgd, 0x2e);
+
+		pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 0);
+
+		return 0;
+	}
+	/ * end trial 3 */
 
 	printf("==== sw_read_dqs ====\n");
 	for( mc = 0; mc < 2; mc++ ) {
@@ -2690,6 +2714,19 @@ static int sw_read_dqs(u32 block)
 			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x0); /* 25 */
 		}
 	}
+	/* Trial 2 29.11
+	dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (2 * 0x40));
+	dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (2 * 0x40));
+	byte_dqsgd = dx_x_lcdlr2.fields.dqsgd + ( dx_x_mdlr0.fields.iprd /4);
+	pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (2 * 0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
+
+	dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (3 * 0x40));
+	dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (3 * 0x40));
+	byte_dqsgd = dx_x_lcdlr2.fields.dqsgd + ( dx_x_mdlr0.fields.iprd /4);
+	pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (3 * 0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd );
+	end trial */
+
+
 	pub_read_modify_write(block, PUB_DXCCR_REG_ADDR, dxccr, qscnten, 1); /* step 28 */
 	for( bl_index = 0;bl_index < 4;bl_index++) {
 		addr_offset = bl_index * 0x40;
@@ -3111,33 +3148,60 @@ int	ddr_training(void)
 				} else {
 					pgsr0.reg = emem_mc_indirect_reg_read_synop(
 						emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
-					printf( "\n### ddr training PUB_PGSR0 - 0x%x iter %u\n", pgsr0.reg, iter );
-					if((pgsr0.fields.qsgdone != 1 && (iter == 0) && !sw_rdqs) ||
-						(pgsr0.fields.wladone != 1 && (iter == 1)) ||
-						(pgsr0.fields.rddone != 1 && (iter == 1)) ||
-						(pgsr0.fields.wddone != 1 && (iter == 1)) ||
-						(pgsr0.fields.redone != 1 && (iter == 1)) ||
-						(pgsr0.fields.wedone != 1 && (iter == 1))) {
+					if( ( !sw_rdqs ) &&
+						( (pgsr0.fields.qsgdone != 1 && (iter == 0) ) ||
+						  (pgsr0.fields.wladone != 1 && (iter == 1) ) ||
+						  (pgsr0.fields.rddone  != 1 && (iter == 1) ) ||
+						  (pgsr0.fields.wddone  != 1 && (iter == 1) ) ||
+						  (pgsr0.fields.redone  != 1 && (iter == 1) ) ||
+						  (pgsr0.fields.wedone  != 1 && (iter == 1) )    ) ){
 							error("ddr_training: full data training found done bits not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
 							failed_block = block;
 							status = false;
-					} else if (get_debug())
+					}
+					else if( ( sw_rdqs ) &&
+							 ( (pgsr0.fields.wladone != 1  && (iter == 0)) ||
+							   (pgsr0.fields.rddone  != 1  && (iter == 0)) ||
+							   (pgsr0.fields.wddone  != 1  && (iter == 0)) ||
+							   (pgsr0.fields.redone  != 1  && (iter == 0)) ||
+							   (pgsr0.fields.wedone  != 1  && (iter == 0))    ) ){
+						error("ddr_training: full data training found done bits not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
+						current_ddr_params.clock_frequency, block, pgsr0.reg);
+						failed_block = block;
+						status = false;
+					}
+					else if (get_debug()){
 							printf("ddr_training: full data training done (freq %dMHz) in block %d, PGSR0 status = 0x%08X\n",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
+					}
 
-					if ((pgsr0.fields.qsgerr != 0 && (iter == 0) && !sw_rdqs) ||
-						(pgsr0.fields.wlaerr != 0 && (iter == 1)) ||
-						(pgsr0.fields.rderr != 0 && (iter == 1)) ||
-						(pgsr0.fields.wderr != 0 && (iter == 1)) ||
-						(pgsr0.fields.reerr != 0 && (iter == 1)) ||
-						(pgsr0.fields.weerr != 0 && (iter == 1))) {
+					if( ( !sw_rdqs ) &&
+					    ( (pgsr0.fields.qsgerr != 0 && (iter == 0)) ||
+						  (pgsr0.fields.wlaerr != 0 && (iter == 1)) ||
+						  (pgsr0.fields.rderr  != 0 && (iter == 1)) ||
+						  (pgsr0.fields.wderr  != 0 && (iter == 1)) ||
+						  (pgsr0.fields.reerr  != 0 && (iter == 1)) ||
+						  (pgsr0.fields.weerr  != 0 && (iter == 1))   ) ) { /* HW training only */
 							error("ddr_training: full data training found error bits set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
 							failed_block = block;
 							status = false;
 
-					} else{
+					}
+					else if( ( sw_rdqs ) &&
+						    ( (pgsr0.fields.wlaerr != 0 && (iter == 0)) ||
+							  (pgsr0.fields.rderr  != 0 && (iter == 0)) ||
+						 	  (pgsr0.fields.wderr  != 0 && (iter == 0)) ||
+							  (pgsr0.fields.reerr  != 0 && (iter == 0)) ||
+							  (pgsr0.fields.weerr  != 0 && (iter == 0))   ) ) { /* SW training only */
+								error("ddr_training: full data training found error bits set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
+								current_ddr_params.clock_frequency, block, pgsr0.reg);
+								failed_block = block;
+								status = false;
+
+					}
+					else{
 						if (get_debug()){
 							printf("ddr_training: full data training passed (freq %dMHz) in block %d, PGSR0 status = 0x%08X\n",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
