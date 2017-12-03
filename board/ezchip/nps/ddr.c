@@ -2477,6 +2477,61 @@ int phy_init(void)
 	return 0;
 }
 
+static int sw_read_dqs_normalization(u32 block)
+{
+	u32 byte_nom_err, bl_index, byte_dgsl, byte_dqsgd, byte_iprd/* , byte_nom_done */;
+	union pub_dx_x_gtr0 dx_x_gtr0;
+	union pub_dx_x_mdlr0 dx_x_mdlr0;
+	union pub_dx_x_lcdlr2 dx_x_lcdlr2;
+
+	printf("==== sw_read_dqs_normalization (emem_mc block 0x%x)  ====    \n", emem_mc_block_id[block] );
+
+	byte_nom_err = 0;
+	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 1);
+	for( bl_index=0 ; bl_index<4 ; bl_index++ ){
+		/* 6 */
+		byte_dgsl = 0;
+		byte_dqsgd = 0;
+		byte_iprd = 0;
+		/* byte_nom_done = 0; */
+
+		dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (bl_index*0x40));
+		byte_dgsl = dx_x_gtr0.fields.dgsl;
+		dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (bl_index*0x40));
+		byte_iprd = dx_x_mdlr0.fields.iprd;
+		dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (bl_index*0x40));
+		byte_dqsgd = dx_x_lcdlr2.fields.dqsgd;
+
+		/* 10 */
+		if( byte_dgsl > 0 ){
+			/* 11 */
+			byte_dgsl = byte_dgsl - 1;
+			byte_dqsgd = byte_dqsgd + byte_iprd;
+
+			/* 13 */
+			pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (bl_index*0x40), dx_x_gtr0, dgsl, byte_dgsl);
+			pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (bl_index*0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
+			/* byte_nom_done = 1; */
+		}
+		else{
+			/* 16 */
+			byte_nom_err = 1;
+			printf( "ERROR ifc = %d byte = %d Step 16\n", block, bl_index );
+		}
+	}
+
+	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 0);
+
+	if ( byte_nom_err ) {
+		error("sw_read_dqs_normalization failed emem_mc block 0x%x", emem_mc_block_id[block] );
+		return -1;
+	}
+
+	return 0;
+}
+
+
+
 static int sw_read_dqs(u32 block)
 {
 	union pub_dcusr0 dcusr0;
@@ -2487,10 +2542,19 @@ static int sw_read_dqs(u32 block)
 	u32 dqsg_limit, byte_dqsgd, byte_qsgdone, byte_qsgerr;
 	u32 byte_first_pass, byte_last_pass, repeat_count, dqsg_byte;
 	bool error_msg = false, set_qsgerr = false;
-	bool do17 = false;
+	bool do17 = false, sw_rdqs_nrml = false;
+	u32 mr_data_0, mr_data_1;
+
+	sw_rdqs_nrml = (getenv_yesno("sw_rdqs_nrml") == 1);
 
 	printf("==== sw_read_dqs ====\n");
 	for( mc = 0; mc < 2; mc++ ) {
+		/* additional pre-charge all command */
+		mr_data_0 = (0x2a << MR_CMD_OFFSET) + 0x400;
+		mr_data_1 = 0x2100C;
+		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block], mc, mr_data_0, mr_data_1);
+		/* end addition */
+
 		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
 				mc,GET_MRS_DATA_0(3, (mr3_ddr4.reg + 0x4)), GET_MRS_DATA_1(1));
 		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
@@ -2537,6 +2601,9 @@ static int sw_read_dqs(u32 block)
 			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DCUDR_REG_ADDR, 0x000183C0 + (dqsg_rank * 0x20)); /* 13.i */
 			pub_read_modify_write(block, PUB_DCURR_REG_ADDR, dcurr, eaddr, 0x2);
 			pub_dual_read_modify_write(block, PUB_DCULR_REG_ADDR, dculr, leaddr, 0x2, lcnt, 0x7); /* 13.k */
+			/* todo trail to be performed:
+			 pub_read_modify_write(block, PUB_DCULR_REG_ADDR, dculr, xleaddr, 0 ); */
+
 			for( j = 0; j < (INDIRECT_RETRY_NUM * INDIRECT_RETRY_NUM); j++) {
 				pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + addr_offset, dx_x_lcdlr2, dqsgd, byte_dqsgd); /* 13.l */
 				pub_read_modify_write(block, PUB_DCURR_REG_ADDR, dcurr, dinst, 0x2);
@@ -2591,7 +2658,7 @@ static int sw_read_dqs(u32 block)
 				error_msg = true;
 			else {
 				if (byte_dgsl != 0) {
-					if ( do17 ) {
+					if ( 0 /* do17, step 17 is omitted altogether from flow */ ) {
 						if ( byte_dqsgd >= (dqsg_limit / 2)) {
 							pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl); /* 18 */
 						}
@@ -2623,7 +2690,7 @@ static int sw_read_dqs(u32 block)
 			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x0); /* 25 */
 		}
 	}
-	pub_read_modify_write(block, PUB_DXCCR_REG_ADDR, dxccr, qscnten, 1);
+	pub_read_modify_write(block, PUB_DXCCR_REG_ADDR, dxccr, qscnten, 1); /* step 28 */
 	for( bl_index = 0;bl_index < 4;bl_index++) {
 		addr_offset = bl_index * 0x40;
 		pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x1);
@@ -2637,9 +2704,23 @@ static int sw_read_dqs(u32 block)
 				mc, GET_MRS_DATA_0(3, mr3_ddr4.reg), GET_MRS_DATA_1(1));
 		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
 				mc, GET_MRS_DATA_0(4, mr4_ddr4.reg), GET_MRS_DATA_1(1));
+
+		/* additional pre-charge all command */
+		mr_data_0 = (0x2a << MR_CMD_OFFSET) + 0x400;
+		mr_data_1 = 0x2100C;
+		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block], mc, mr_data_0, mr_data_1);
+		/* end addition */
+
 	}
 	if(error_msg)
 		return -EBUSY;
+
+
+	set_debug(1);
+	if ( sw_rdqs_nrml && sw_read_dqs_normalization( block ) )
+		return -1;
+	set_debug(0);
+
 	return 0;
 }
 
@@ -2653,7 +2734,7 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 	union pub_pgsr0 pgsr0;
 	u32 wl_rank, bl_index, mc, addr_offset, mr_data_0, mr_data_1;
 	u32 byte_prevdq, wl_byte, byte_wldly, byte_wldone, byte_dq;
-	u32 i, byte_validated, wl_validation_window, wl_validation_count;
+	u32 i, byte_validated, wl_validation_window, wl_validation_count, wl_step;
 	int wldly;
 	bool byte_error = false;
 
@@ -2698,8 +2779,9 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 			byte_validated = 0;
 			wl_validation_window = 0;
 			wl_validation_count = 0;
+			wl_step = 8;
 
-			for ( wldly = 0; wldly < 0x1FF; wldly+=3) {
+			for ( wldly = 0; wldly < 0x1FF; wldly+=wl_step) {
 				dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
 									PUB_DX0LCDLR0_REG_ADDR + addr_offset, 0x100, g_EZsim_mode);
 				dx_x_lcdlr0[wl_byte].fields.wld = wldly;
@@ -2721,6 +2803,7 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 				dx_x_gsr0[wl_byte].reg = emem_mc_indirect_reg_read_synop(
 						emem_mc_block_id[block], PUB_DX0GSR0_REG_ADDR + (wl_byte * 0x40));
 				byte_dq = dx_x_gsr0[wl_byte].fields.wldq;
+				printf( " ifc = %d byte = %d Step 10.d : wldly = %d : byte_dq = %d : byte_prevdq = %d\n", block, wl_byte, wldly, byte_dq, byte_prevdq );
 				if((byte_dq == 1) && (byte_prevdq == 0)) {
 					byte_wldone = 1;
 					byte_wldly = wldly;
@@ -2757,8 +2840,12 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 					dx_x_gsr0[wl_byte].reg = emem_mc_indirect_reg_read_synop(
 							emem_mc_block_id[block], PUB_DX0GSR0_REG_ADDR + (wl_byte * 0x40));
 					byte_dq = dx_x_gsr0[wl_byte].fields.wldq;
-					if( byte_dq == 1 )
+					printf( " ifc = %d byte = %d Step 12.d : wldly = %d : byte_dq = %d\n", block, wl_byte, wldly, byte_dq );
+					if( byte_dq == 1 ){ /* f */
 						wl_validation_count++;
+						printf( " ifc = %d byte = %d Step 12.f : wl_validation_count = %d : wl_validation_window = %d\n", block, wl_byte, wl_validation_count, wl_validation_window );
+					}
+
 					if( wl_validation_count == wl_validation_window ) { /* g */
 						byte_validated = 1; /* h */
 						break;
@@ -2813,12 +2900,68 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 	return 0;
 }
 
+static int sw_write_leveling_normalization( u32 block )
+{
+	u32 byte_nom_err, bl_index, byte_wlsl, byte_wld, byte_iprd/* , byte_nom_done */;
+	union pub_dx_x_gtr0 dx_x_gtr0;
+	union pub_dx_x_mdlr0 dx_x_mdlr0;
+	union pub_dx_x_lcdlr0 dx_x_lcdlr0;
+
+	printf("==== sw_write_leveling_normalization (emem_mc block 0x%x)  ====    \n", emem_mc_block_id[block] );
+
+	byte_nom_err = 0;
+	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 1);
+	for( bl_index=0 ; bl_index<4 ; bl_index++ ){
+		/* 6 */
+		byte_wlsl = 0;
+		byte_wld = 0;
+		byte_iprd = 0;
+		/* byte_nom_done = 0; */
+		dx_x_gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (bl_index*0x40));
+		byte_wlsl = dx_x_gtr0.fields.wlsl;
+		dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (bl_index*0x40));
+		byte_iprd = dx_x_mdlr0.fields.iprd;
+		dx_x_lcdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (bl_index*0x40));
+		byte_wld = dx_x_lcdlr0.fields.wld;
+
+		/* 10 */
+		if( ( byte_wlsl == 0          ) &&
+			( byte_wld  >  byte_iprd  )    ){
+			/* 10 */
+			continue;
+		}
+		else if ( byte_wlsl  > 0 ){
+			/* 12 */
+			byte_wlsl = byte_wlsl - 1;
+			byte_wld = byte_wld + byte_iprd;
+			pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (bl_index*0x40), dx_x_gtr0, wlsl, byte_wlsl);
+			pub_read_modify_write(block, PUB_DX0LCDLR0_REG_ADDR + (bl_index*0x40), dx_x_lcdlr0, wld, byte_wld);
+			/* byte_nom_done  = 1; */
+		}
+		else{
+			/* 17 */
+			byte_nom_err = 1;
+			printf( "ERROR ifc = %d byte = %d Step 17\n", block, bl_index );
+		}
+
+	}
+
+	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 0);
+
+	if ( byte_nom_err ) {
+		error("sw_write_leveling_normalization failed emem_mc block 0x%x", emem_mc_block_id[block] );
+		return -1;
+	}
+
+	return 0;
+}
+
 int	ddr_training(void)
 {
 	u32 wl_mr1_data, wl_mr2_data, block, mc, i;
 	u32 failed_block, iter;
 	union pub_pgsr0 pgsr0;
-	bool status = true, sw_wl = false, sw_rdqs = false;
+	bool status = true, sw_wl = false, sw_rdqs = false, sw_wl_nrml = false;
 	u32 wl_mr1_rtt_nom_set, wl_mr2_rtt_wr_mask;
 	union	pub_dx_x_lcdlr0 dx_x_lcdlr0;
 	union	pub_dx_x_gtr0 dx_x_gtr0;
@@ -2836,6 +2979,7 @@ int	ddr_training(void)
 	wl_mr1_data = (mr1_ddr4.reg | wl_mr1_rtt_nom_set);
 	wl_mr2_data = (mr2_ddr4.reg & wl_mr2_rtt_wr_mask); 
 	sw_wl = (getenv_yesno("sw_write_leveling") == 1);
+    sw_wl_nrml = (getenv_yesno("sw_write_leveling_nrml") == 1);
 	sw_rdqs = (getenv_yesno("sw_rdqs") == 1);
 	for (block = 0; block < EMEM_MC_NUM_OF_BLOCKS; block++) {
 		if(SKIP_IFC(block))
@@ -2857,6 +3001,7 @@ int	ddr_training(void)
 				sw_write_leveling(block, wl_mr1_data);
 			}*/
 			/*print_pub_dump(block);		*/
+
 		}
 		else {
 			pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, wlstep, 1);
@@ -2966,6 +3111,7 @@ int	ddr_training(void)
 				} else {
 					pgsr0.reg = emem_mc_indirect_reg_read_synop(
 						emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
+					printf( "\n### ddr training PUB_PGSR0 - 0x%x iter %u\n", pgsr0.reg, iter );
 					if((pgsr0.fields.qsgdone != 1 && (iter == 0) && !sw_rdqs) ||
 						(pgsr0.fields.wladone != 1 && (iter == 1)) ||
 						(pgsr0.fields.rddone != 1 && (iter == 1)) ||
@@ -2991,9 +3137,17 @@ int	ddr_training(void)
 							failed_block = block;
 							status = false;
 
-					} else if (get_debug())
+					} else{
+						if (get_debug()){
 							printf("ddr_training: full data training passed (freq %dMHz) in block %d, PGSR0 status = 0x%08X\n",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
+						}
+						if( sw_wl_nrml ){
+							set_debug(1);
+							sw_write_leveling_normalization(block);
+							set_debug(0);
+						}
+					}
 				}
 			}
 			if ( iter == 0 && !sw_rdqs) 
