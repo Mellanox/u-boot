@@ -2543,11 +2543,14 @@ static int sw_read_dqs(u32 block)
 	u32 byte_dgsl, mc, bl_index, addr_offset, dqsg_rank;
 	u32 dqsg_limit, byte_dqsgd, byte_qsgdone, byte_qsgerr;
 	u32 byte_first_pass, byte_last_pass, repeat_count, dqsg_byte;
+	u32 mr_data_0, mr_data_1;
 	bool error_msg = false, set_qsgerr = false;
 	bool do17 = false, sw_rdqs_nrml = false;
-	u32 mr_data_0, mr_data_1;
+	bool dxtr = false; /* false for now, lower failure probability */
 
 	sw_rdqs_nrml = (getenv_yesno("sw_rdqs_nrml") == 1);
+
+	printf("==== sw_read_dqs ====\n");
 
 	/* trial 3 29.11 * /
 	{
@@ -2571,7 +2574,6 @@ static int sw_read_dqs(u32 block)
 	}
 	/ * end trial 3 */
 
-	printf("==== sw_read_dqs ====\n");
 	for( mc = 0; mc < 2; mc++ ) {
 		/* additional pre-charge all command */
 		mr_data_0 = (0x2a << MR_CMD_OFFSET) + 0x400;
@@ -2584,6 +2586,8 @@ static int sw_read_dqs(u32 block)
 		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
 				mc,GET_MRS_DATA_0(4, (mr4_ddr4.reg + 0x400)), GET_MRS_DATA_1(1));
 	}
+	pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, pub_mode, 0x1);
+
 	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 1);
 	for (bl_index = 0;bl_index < 4; bl_index++) {
 		addr_offset = bl_index * 0x40;
@@ -2608,6 +2612,10 @@ static int sw_read_dqs(u32 block)
 			dqsg_byte = (dqsg_rank * 2) + bl_index;
 			addr_offset = dqsg_byte * 0x40;
 			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 1); /* 9 */
+			if ( dxtr ){
+				pub_read_modify_write(block, PUB_DX0GCR2_REG_ADDR + addr_offset, dx_n_gcr2, dxtemode, 0x5555);
+				pub_read_modify_write(block, PUB_DX0GCR3_REG_ADDR + addr_offset, dx_n_gcr3, dstemode, 0x1);
+			}
 			dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (dqsg_byte * 0x40));
 			dqsg_limit = dx_x_mdlr0.fields.iprd * 2;
 			pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, dqsg_rank, rankwid, dqsg_rank);
@@ -2712,6 +2720,10 @@ static int sw_read_dqs(u32 block)
 				error("The Maximum system latency reached without finding first pass or the Read DQS Gate position cannot be decremented by 1 UI");
 			}
 			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x0); /* 25 */
+			if ( dxtr ){
+				pub_read_modify_write(block, PUB_DX0GCR2_REG_ADDR + addr_offset, dx_n_gcr2, dxtemode, 0x0);
+				pub_read_modify_write(block, PUB_DX0GCR3_REG_ADDR + addr_offset, dx_n_gcr3, dstemode, 0x0);
+			}
 		}
 	}
 	/* Trial 2 29.11
@@ -2734,13 +2746,15 @@ static int sw_read_dqs(u32 block)
 		pub_read_modify_write(block, PUB_DX0GCR2_REG_ADDR + addr_offset, dx_n_gcr2, dxtemode, 0x0);
 		pub_read_modify_write(block, PUB_DX0GCR3_REG_ADDR + addr_offset, dx_n_gcr3, dstemode, 0x0);
 	}
+	pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, pub_mode, 0x0);
+	udelay(1000);
 	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 0);
 	pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 0, rankwid, 0);
 	for( mc = 0; mc < 2; mc++ ) {
 		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
-				mc, GET_MRS_DATA_0(3, mr3_ddr4.reg), GET_MRS_DATA_1(1));
-		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
 				mc, GET_MRS_DATA_0(4, mr4_ddr4.reg), GET_MRS_DATA_1(1));
+		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
+				mc, GET_MRS_DATA_0(3, mr3_ddr4.reg), GET_MRS_DATA_1(1));
 
 		/* additional pre-charge all command */
 		mr_data_0 = (0x2a << MR_CMD_OFFSET) + 0x400;
@@ -2757,6 +2771,13 @@ static int sw_read_dqs(u32 block)
 	if ( sw_rdqs_nrml && sw_read_dqs_normalization( block ) )
 		return -1;
 	set_debug(0);
+
+	pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x0);
+	udelay(1);
+	pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x1);
+	udelay(1);
+
+
 
 	return 0;
 }
@@ -2801,6 +2822,8 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 		emem_mc_indirect_reg_write_mrs(emem_mc_block_id[block],
 				mc,GET_MRS_DATA_0(1, (wl_mr1_data + 0x80)), GET_MRS_DATA_1(1));
 	}
+
+	pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, pub_mode, 0x1);
 
 	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 1);
 	pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, wlmode, 1);
@@ -2915,6 +2938,8 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 		}
 	}
 	pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, wlmode, 0);
+	pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, pub_mode, 0x0);
+	udelay(1000);
 	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 0);
 	
 	for( mc = 0; mc < 2; mc++ ) {
