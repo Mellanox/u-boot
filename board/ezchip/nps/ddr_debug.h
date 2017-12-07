@@ -37,7 +37,7 @@
 
 
 #define PUB_REG_NAME_MAX_LEN 80
-#define PUB_DDR_PHY_REGS_NUMBER 294
+#define PUB_DDR_PHY_REGS_NUMBER 295
 
 typedef struct _pub_reg_record {
 	char name[PUB_REG_NAME_MAX_LEN];

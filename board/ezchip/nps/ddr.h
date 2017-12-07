@@ -106,6 +106,16 @@
 #define emem_mc_indirect_reg_write_mrs(block, mc, data_0, data_1)\
 	emem_mc_write_indirect_reg(block, 0, 2, data_0, data_1, (mc * 0x10) + 1)
 
+#define pub_dual_read_modify_write(block, address, reg_name, field1, val1, field2, val2)\
+{\
+	union pub_##reg_name pub_reg;\
+	pub_reg.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], address);\
+	pub_reg.fields.field1 = val1;\
+	pub_reg.fields.field2 = val2;\
+	emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], address, pub_reg.reg);\
+}
+
+
 #define EMEM_MC_IND_CMD_OP_WRITE				1
 #define EMEM_MC_IND_CMD_OP_READ					0
 
@@ -381,7 +391,10 @@
 #define PUB_DX0GSR0_REG_ADDR		0x1F8
 
 #define	PUB_BISTMSKR1_REG_ADDR		0x103
-#define	PUB_VTDR_REG_ADDR		0x08F
+#define	PUB_DTEDR0_REG_ADDR			0x08C
+#define	PUB_DTEDR1_REG_ADDR			0x08D
+#define	PUB_DTEDR2_REG_ADDR			0x08E
+#define	PUB_VTDR_REG_ADDR			0x08F
 
 
 /* set of ddr errors that uboot raises to the cp */
@@ -932,6 +945,15 @@ union pub_pgcr1 {
 	} fields;
 };
 
+union pub_pgcr4 {
+	u32	reg;
+	struct {
+		u32 reserved_21_32:11;
+		u32 dxddlld:5;
+		u32 reserved_0_15:16;
+	} fields;
+};
+
 union pub_pgcr6 {
 	u32	reg;
 	struct {
@@ -962,7 +984,7 @@ union pub_pgcr7 {
 		u32 dxgsmd:1;
 		u32 dxddlldt:1;
 		u32 dxqsdbyp:1;
-		u32 dxgbyp:1;
+		u32 dxgdbyp:1;
 		u32 dxtmode:1;
 		u32 reserved8_15:8;
 		u32 acrsvd:3;
@@ -1184,6 +1206,42 @@ union pub_bistmskr1 {
 		u32 ckemsk:8;
 		u32 bamsk:4;
 		u32	x4dmmsk:4;
+	} fields;
+};
+
+
+
+union pub_dtedr0 {
+	u32	reg;
+	struct {
+		u32 dtwbmx:8;
+		u32 dtwbmn:8;
+		u32 dtwlmx:8;
+		u32 dtwlmn:8;
+	} fields;
+};
+
+
+
+union pub_dtedr1 {
+	u32	reg;
+	struct {
+		u32 dtrbmx:8;
+		u32 dtrbmn:8;
+		u32 dtrlmx:8;
+		u32 dtrlmn:8;
+	} fields;
+};
+
+
+
+union pub_dtedr2 {
+	u32	reg;
+	struct {
+		u32 dtrbmx:8;
+		u32 dtrbmn:8;
+		u32 dtrlmx:8;
+		u32 dtrlmn:8;
 	} fields;
 };
 
@@ -1837,7 +1895,9 @@ union pub_dx_n_gcr4 {
 union pub_dx_n_gcr0 {
 	u32 reg;
 	struct {
-		u32 reserved1_31:31;
+		u32 reserved_6_31:26;
+		u32 dqsgpdr:1;
+		u32 reserved_1_4:4;
 		u32 dxen:1;
 	} fields;
 };
@@ -1961,6 +2021,48 @@ int do_print_ddr_config(cmd_tbl_t *cmdtp, int flag, int argc,
 							char * const argv[]);
 int do_ddr_pause(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int do_pup_fail_dump(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+#endif
+
+#define DEBUG_LEVEL_20
+
+#define _PRINT_LEVEL_10          10
+#define _PRINT_LEVEL_20          20
+#define _PRINT_LEVEL_30          30
+
+
+#if defined(DEBUG_LEVEL_20)
+#undef  __LEVEL
+#define __LEVEL _PRINT_LEVEL_20
+#elif defined(DEBUG_LEVEL_10)
+#undef  __LEVEL
+#define __LEVEL _PRINT_LEVEL_10
+#elif defined(DEBUG_LEVEL_30)
+#undef  __LEVEL
+#define __LEVEL _PRINT_LEVEL_30
+#else
+#undef  __LEVEL
+#define __LEVEL 0
+#endif
+
+#if (__LEVEL>=_PRINT_LEVEL_10)
+#undef _PRINT_LEVEL_10
+#define _PRINT_LEVEL_10(code)  code
+#else
+#define _PRINT_LEVEL_10(code)
+#endif
+
+#if (__LEVEL>=_PRINT_LEVEL_20)
+#undef _PRINT_LEVEL_20
+#define _PRINT_LEVEL_20(code)  code
+#else
+#define _PRINT_LEVEL_20(code)
+#endif
+
+#if (__LEVEL>=_PRINT_LEVEL_30)
+#undef _PRINT_LEVEL_30
+#define _PRINT_LEVEL_30(code)  code
+#else
+#define _PRINT_LEVEL_30(code)
 #endif
 
 #endif /* _DDR_H_ */

@@ -164,6 +164,7 @@ static pub_ddr_phy_port_record ddr_phy_port_record_init = {
 		{ "DTDR1"     , 0x087 , 0x0 },
 		{ "DTEDR0"    , 0x08C , 0x0 },
 		{ "DTEDR1"    , 0x08D , 0x0 },
+		{ "DTEDR2"    , 0x08E , 0x0 },
 		{ "VTDR"      , 0x08F , 0x0 },
 		{ "DQSDR0"    , 0x094 , 0x0 },
 		{ "DQSDR1"    , 0x095 , 0x0 },
@@ -2876,6 +2877,7 @@ static void print_reg(char *name, u32 address, u32 val) {
 void print_pub_dump(u32 block_idx)
 {
 	u32 block, reg_idx, read_val, register_cnt = 0;
+	u32 rank, bl_index, byte;
 
 	block = emem_mc_block_id[block_idx];
 
@@ -2888,6 +2890,23 @@ void print_pub_dump(u32 block_idx)
 		print_reg(PUB_RECORD_GET(block_idx, reg_idx)->name,
 				PUB_RECORD_GET(block_idx, reg_idx)->address,
 				read_val);
+	}
+
+	for( rank = 0;rank < 2;rank++) {
+		for( bl_index = 0;bl_index < 2;bl_index++) {
+			byte = (rank * 2) + bl_index;
+			pub_dual_read_modify_write(block_idx, PUB_DTCR0_REG_ADDR, dtcr0, dtdrs, rank, dtdbs, byte);
+			udelay(1);
+			printf( "Data Training Eye Data Register: rank %u, byte: %u\n", rank, byte );
+			read_val = emem_mc_indirect_reg_read_synop(block, PUB_DTEDR0_REG_ADDR);
+			print_reg( "DTEDR0", PUB_DTEDR0_REG_ADDR, read_val);
+
+			read_val = emem_mc_indirect_reg_read_synop(block, PUB_DTEDR1_REG_ADDR);
+			print_reg( "DTEDR1", PUB_DTEDR1_REG_ADDR, read_val);
+
+			read_val = emem_mc_indirect_reg_read_synop(block, PUB_DTEDR2_REG_ADDR);
+			print_reg( "DTEDR2", PUB_DTEDR2_REG_ADDR, read_val);
+		}
 	}
 }
 
