@@ -407,7 +407,8 @@ static pub_ddr_phy_port_record ddr_phy_port_record_init = {
 		{ "DX3GSR3"   , 0x2BB , 0x0 },
 		{ "DX3GSR4"   , 0x2BC , 0x0 },
 		{ "DX3GSR5"   , 0x2BD , 0x0 },
-		{ "DX3GSR6"   , 0x2BE , 0x0 }}
+		{ "DX3GSR6"   , 0x2BE , 0x0 },
+		{ "RESERVED"  , 0x2BF , 0x0 }}
 };
 
 pub_ddr_phy_port_record ddr_phy_record[EMEM_MC_NUM_OF_BLOCKS];
@@ -2882,14 +2883,14 @@ void print_pub_dump(u32 block_idx)
 	block = emem_mc_block_id[block_idx];
 
 	for (reg_idx = 0; reg_idx <= (PUB_DDR_PHY_REGS_NUMBER - 1); reg_idx++) {
-		while ( PUB_RECORD_GET(block_idx, reg_idx)->address != register_cnt )
-			print_reg("Reserved", register_cnt++, 0x0);
-		register_cnt++;
-		read_val = emem_mc_indirect_reg_read_synop(block,
-				PUB_RECORD_GET(block_idx, reg_idx)->address);
-		print_reg(PUB_RECORD_GET(block_idx, reg_idx)->name,
-				PUB_RECORD_GET(block_idx, reg_idx)->address,
-				read_val);
+		while ( PUB_RECORD_GET(block_idx, reg_idx)->address >= register_cnt ){
+			read_val = emem_mc_indirect_reg_read_synop(block, register_cnt );
+			print_reg( ( register_cnt == PUB_RECORD_GET(block_idx, reg_idx)->address ) ?  PUB_RECORD_GET(block_idx, reg_idx)->name : "Reserved" ,
+					register_cnt,
+					read_val);
+
+			register_cnt++;
+		}
 	}
 
 	for( rank = 0;rank < 2;rank++) {

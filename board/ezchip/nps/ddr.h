@@ -285,13 +285,19 @@
 #define PUB_BISTRR_REG_ADDR		0x100
 #define PUB_BISTWCR_REG_ADDR		0x101
 #define PUB_BISTLSR_REG_ADDR		0x105
+#define PUB_BISTAR0_REG_ADDR		0x106
 #define PUB_BISTAR1_REG_ADDR		0x107
 #define PUB_BISTAR2_REG_ADDR		0x108
+#define PUB_BISTAR3_REG_ADDR		0x109
 #define PUB_BISTAR4_REG_ADDR		0x10A
 #define PUB_BISTUDPR_REG_ADDR		0x10B
 #define PUB_BISTGSR_REG_ADDR		0x10C
+#define PUB_BISTWER0_REG_ADDR		0x10D
+#define PUB_BISTWER1_REG_ADDR		0x10E
+#define PUB_BISTWCSR_REG_ADDR		0x114
 #define PUB_RANKIDR_REG_ADDR		0x137
 #define PUB_ACBDLR0_REG_ADDR		0x150
+#define PUB_ACLCDLR_REG_ADDR		0x160
 #define PUB_ACMDLR0_REG_ADDR		0x168
 #define PUB_ACMDLR1_REG_ADDR		0x169
 #define PUB_IOVCR0_REG_ADDR		0x148
@@ -390,7 +396,9 @@
 
 #define PUB_DX0GSR0_REG_ADDR		0x1F8
 
+#define	PUB_BISTMSKR0_REG_ADDR		0x102
 #define	PUB_BISTMSKR1_REG_ADDR		0x103
+#define	PUB_BISTMSKR2_REG_ADDR		0x104
 #define	PUB_DTEDR0_REG_ADDR			0x08C
 #define	PUB_DTEDR1_REG_ADDR			0x08D
 #define	PUB_DTEDR2_REG_ADDR			0x08E
@@ -1145,6 +1153,18 @@ union pub_dx_x_bdlr1 {
 	} fields;
 };
 
+union pub_dx_x_bdlr2 {
+	u32	reg;
+	struct {
+		u32 reserved3:10;
+		u32 dsoebd:6;
+		u32 reserved2:2;
+		u32 dswdb:6;
+		u32 reserved1:2;
+		u32 dmwbd:6;
+	} fields;
+};
+
 union pub_dx_x_bdlr3 {
 	u32	reg;
 	struct {
@@ -1195,6 +1215,13 @@ union pub_dx_x_mdlr1 {
 	} fields;
 };
 
+
+union pub_bistmskr {
+	u32	reg;
+	struct {
+		u32 reserved:32;
+	} fields;
+};
 
 union pub_bistmskr1 {
 	u32	reg;
@@ -1779,6 +1806,30 @@ union pub_bistgsr {
 	} fields;
 };
 
+union pub_bistwer0 {
+	u32	reg;
+	struct {
+		u32 reserved18_31:12;
+		u32 acwer:18;
+	} fields;
+};
+
+union pub_bistwer1 {
+	u32	reg;
+	struct {
+		u32 reserved16_31:16;
+		u32 dxwer:16;
+	} fields;
+};
+
+union pub_bistwcsr {
+	u32	reg;
+	struct {
+		u32 dxwcnt:16;
+		u32 acwcnt:16;
+	} fields;
+};
+
 union pub_bistrr {
 	u32	reg;
 	struct {
@@ -1799,6 +1850,29 @@ union pub_bistrr {
 	} fields;
 };
 
+union pub_bistwcr {
+	u32 reg;
+	struct {
+		u32 reserved16_31:16;
+		u32 bwcnt:16;
+	} fields;
+};
+
+union pub_bistlsr {
+	u32 reg;
+	struct {
+		u32 seed:32;
+	} fields;
+};
+
+union pub_bistar0 {
+	u32 reg;
+	struct {
+		u32 bbank:20;
+		u32 bcol:12;
+	} fields;
+};
+
 union pub_bistar1 {
 	u32 reg;
 	struct {
@@ -1815,6 +1889,30 @@ union pub_bistar2 {
 		u32 bmbank:4;
 		u32 reserved12_27:16;
 		u32 bmcol:12;
+	} fields;
+};
+
+union pub_bistar3 {
+	u32 reg;
+	struct {
+		u32 reserved18_31:14;
+		u32 brow:18;
+	} fields;
+};
+
+union pub_bistar4 {
+	u32 reg;
+	struct {
+		u32 reserved18_31:14;
+		u32 bmrow:18;
+	} fields;
+};
+
+union pub_bistudpr {
+	u32 reg;
+	struct {
+		u32 budp1:16;
+		u32 budp0:16;
 	} fields;
 };
 
@@ -2023,46 +2121,8 @@ int do_ddr_pause(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int do_pup_fail_dump(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 #endif
 
-#define DEBUG_LEVEL_20
-
-#define _PRINT_LEVEL_10          10
-#define _PRINT_LEVEL_20          20
-#define _PRINT_LEVEL_30          30
-
-
-#if defined(DEBUG_LEVEL_20)
-#undef  __LEVEL
-#define __LEVEL _PRINT_LEVEL_20
-#elif defined(DEBUG_LEVEL_10)
-#undef  __LEVEL
-#define __LEVEL _PRINT_LEVEL_10
-#elif defined(DEBUG_LEVEL_30)
-#undef  __LEVEL
-#define __LEVEL _PRINT_LEVEL_30
-#else
-#undef  __LEVEL
-#define __LEVEL 0
-#endif
-
-#if (__LEVEL>=_PRINT_LEVEL_10)
-#undef _PRINT_LEVEL_10
-#define _PRINT_LEVEL_10(code)  code
-#else
 #define _PRINT_LEVEL_10(code)
-#endif
-
-#if (__LEVEL>=_PRINT_LEVEL_20)
-#undef _PRINT_LEVEL_20
-#define _PRINT_LEVEL_20(code)  code
-#else
 #define _PRINT_LEVEL_20(code)
-#endif
-
-#if (__LEVEL>=_PRINT_LEVEL_30)
-#undef _PRINT_LEVEL_30
-#define _PRINT_LEVEL_30(code)  code
-#else
-#define _PRINT_LEVEL_30(code)
-#endif
+#define _PRINT_LEVEL_30(code) code
 
 #endif /* _DDR_H_ */
