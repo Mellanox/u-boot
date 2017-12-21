@@ -2879,6 +2879,7 @@ void print_pub_dump(u32 block_idx)
 {
 	u32 block, reg_idx, read_val, register_cnt = 0;
 	u32 rank, bl_index, byte;
+	char buf[16] = {0};
 
 	block = emem_mc_block_id[block_idx];
 
@@ -2909,6 +2910,26 @@ void print_pub_dump(u32 block_idx)
 			print_reg( "DTEDR2", PUB_DTEDR2_REG_ADDR, read_val);
 		}
 	}
+
+	/* additional dump request read out all indirect registers for all ranks */
+	for( rank = 0;rank < 2;rank++) {
+		pub_dual_read_modify_write(block_idx, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, rank, rankwid, rank);
+
+		for( byte = 0;byte < 4 ; byte++) {
+			printf( "Indirect per-rank registers: rank = %u  byte = %u\n", rank, byte );
+
+			sprintf( buf, "DX%1uGTR0", byte );
+			read_val  = emem_mc_read_indirect_reg(block, PUB_DX0GTR0_REG_ADDR + (byte*0x40), 0x100, g_EZsim_mode);
+			print_reg( buf, PUB_DX0GTR0_REG_ADDR + (byte*0x40), read_val);
+
+			for( register_cnt=0 ; register_cnt<6 ; register_cnt++ ){
+				sprintf( buf, "DX%1uLCDLR%1u", byte, register_cnt );
+				read_val  = emem_mc_read_indirect_reg(block, ( PUB_DX0LCDLR0_REG_ADDR + register_cnt ) + (byte*0x40), 0x100, g_EZsim_mode);
+				print_reg( buf, (PUB_DX0LCDLR0_REG_ADDR+register_cnt + (byte*0x40)), read_val);
+			}
+		}
+	}
+
 }
 
 int do_ddr_training_steps(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])

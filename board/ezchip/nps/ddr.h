@@ -2088,6 +2088,7 @@ enum crg_emi_rst_phase {
 	EMI_RST_PHASE_3,
 };
 
+u32 emem_mc_read_indirect_reg(u32 block_id, u32 address, u32 cmd, bool trace_off);
 int get_vref_index(const u32 *table, u32 size, u32 input);
 int configure_emem(void);
 void emem_mc_write_indirect_reg(unsigned int block_id, unsigned int address,
