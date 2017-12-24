@@ -3232,6 +3232,8 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 	bool trial_3_18_12 = false;
 	bool trial_1_20_12 = true; /* should be always enabled */
 	bool trial_2_20_12 = true; /* should be always enabled */
+	bool trial_oded_1_21_12 = true;
+	u32 wcal_offset;
 
 	if( g_ddr_htol_debug_verbose >= 1 )
 		printf("==== sw_write_leveling  ( Phy interface %d ) ====    \n", block); // ddr_htol_debug_verbose 1
@@ -3287,13 +3289,34 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 			wl_validation_count = 0;
 			wl_step = 8;
 
+			if( trial_oded_1_21_12 ){
+				dx_x_gsr0[wl_byte].reg = emem_mc_indirect_reg_read_synop(
+						emem_mc_block_id[block], PUB_DX0GSR0_REG_ADDR + (wl_byte * 0x40));
+				wcal_offset = 0;
+				if( dx_x_gsr0[wl_byte].fields.wlprd == 0 ){
+					dx_x_mdlr0[wl_byte].reg = emem_mc_indirect_reg_read_synop(
+						emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (wl_byte * 0x40));
+
+					wcal_offset = dx_x_mdlr0[wl_byte].fields.iprd;
+				}
+			}
+
 			/* write leveling search step 10 */
 			for ( wldly = 0; wldly < 0x1FF; wldly+=wl_step) {
 				dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
 									PUB_DX0LCDLR0_REG_ADDR + addr_offset, 0x100, g_EZsim_mode);
-				dx_x_lcdlr0[wl_byte].fields.wld = wldly;
+				if( g_ddr_htol_debug_verbose >= 3 )
+					printf( " ifc = %d byte = %d Step 10.a : pre-write LCDLR0.WLD = 0x%x \n", block, wl_byte, dx_x_lcdlr0[wl_byte].fields.wld );
+				if( trial_oded_1_21_12 ){
+					dx_x_lcdlr0[wl_byte].fields.wld = wldly + wcal_offset;
+					printf( " ifc = %d byte = %d Step 10.b : wldly = %u LCDLR0.wld = %u \n", block, wl_byte, wldly, dx_x_lcdlr0[wl_byte].fields.wld );
+				}
+				else{
+					dx_x_lcdlr0[wl_byte].fields.wld = wldly;
+				}
 				emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + addr_offset,
 												 1, dx_x_lcdlr0[wl_byte].reg, 0, 0x101);
+
 				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],	PUB_PIR_REG_ADDR, 0x40200);
 				for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
 					udelay(1000);
