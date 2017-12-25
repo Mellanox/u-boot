@@ -35,6 +35,7 @@
 #include <linux/errno.h>
 #include "common.h"
 #include "ddr.h"
+#include "ddr_debug.h"
 #include "nps.h"
 #include "chip.h"
 #include "bist.h"
@@ -2303,9 +2304,6 @@ static int dll_calibration_fail_recovery(u32 ifc)
 	union pub_dx_x_lcdlr4 dx_x_lcdlr4[4];
 	union pub_dx_x_lcdlr5 dx_x_lcdlr5[4];
 
-	union pub_dx_x_lcdlr0 dx_x_lcdlr0[4];
-	union pub_dx_x_lcdlr2 dx_x_lcdlr2[4];
-
 	union pub_pgsr0 pgsr0;
 	int index, half_ui;
 	u32 res_acmdlr, res_dxmdlr[4];
@@ -2375,6 +2373,10 @@ static int dll_calibration_fail_recovery(u32 ifc)
 			pub_dual_read_modify_write(ifc, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 0, rankwid, 0);
 
 			/* todo remove
+			union pub_dx_x_lcdlr2 dx_x_lcdlr2[4];
+			union pub_dx_x_lcdlr0 dx_x_lcdlr0[4];
+
+			 *
 			dx_x_lcdlr0[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR0_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr0[index].fields.wld = 0;
@@ -2611,6 +2613,8 @@ static int sw_read_dqs_normalization(u32 block)
 	union pub_dx_x_mdlr0 dx_x_mdlr0;
 	union pub_dx_x_lcdlr2 dx_x_lcdlr2;
 
+	bool trial_1_24_12 = false;
+
 	if( g_ddr_htol_debug_verbose >= 1 )
 		printf("==== sw_read_dqs_normalization  ( Phy interface %d ) ====    \n", block );// ddr_htol_debug_verbose 1
 
@@ -2639,18 +2643,20 @@ static int sw_read_dqs_normalization(u32 block)
 
 		/* 10 */
 		if( byte_dgsl > 0 ){
-			/* 11 */
-			byte_dgsl = byte_dgsl - 1;
-			byte_dqsgd = byte_dqsgd + byte_iprd;
+			if( !( trial_1_24_12 ) || ( byte_dqsgd < byte_iprd ) ){
+				/* 11 */
+				byte_dgsl = byte_dgsl - 1;
+				byte_dqsgd = byte_dqsgd + byte_iprd;
 
-			/* 13 */
-			pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (bl_index*0x40), dx_x_gtr0, dgsl, byte_dgsl);
-			pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (bl_index*0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
-			/* byte_nom_done = 1; */
+				/* 13 */
+				pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (bl_index*0x40), dx_x_gtr0, dgsl, byte_dgsl);
+				pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (bl_index*0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
+				/* byte_nom_done = 1; */
 
-			if( g_ddr_htol_debug_verbose >= 2 ){ // ddr_htol_debug_verbose 2
-				printf( " ifc = %d byte = %d dqs_norm : post-value DXnGTR0 byte_dgsl %u\n", block, bl_index, byte_dgsl );
-				printf( " ifc = %d byte = %d dqs_norm : post-value DXnLCDLR2 byte_dqsgd %u\n", block, bl_index, byte_dqsgd );
+				if( g_ddr_htol_debug_verbose >= 2 ){ // ddr_htol_debug_verbose 2
+					printf( " ifc = %d byte = %d dqs_norm : post-value DXnGTR0 byte_dgsl %u\n", block, bl_index, byte_dgsl );
+					printf( " ifc = %d byte = %d dqs_norm : post-value DXnLCDLR2 byte_dqsgd %u\n", block, bl_index, byte_dqsgd );
+				}
 			}
 		}
 		else{
@@ -2918,9 +2924,6 @@ static int sw_read_dqs(u32 block)
 	union pub_dx_x_mdlr0 dx_x_mdlr0;
 	union pub_dx_x_lcdlr3 lcdlr3;
 	union pub_dx_x_lcdlr4 lcdlr4;
-	union pub_dx_x_lcdlr5 lcdlr5;
-
-	/* union pub_dx_x_lcdlr2 dx_x_lcdlr2 */;
 
 	int i, j;
 	u32 byte_dgsl, mc, bl_index, addr_offset, dqsg_rank;
@@ -2928,7 +2931,6 @@ static int sw_read_dqs(u32 block)
 	u32 byte_first_pass, byte_last_pass, repeat_count, dqsg_byte;
 	u32 mr_data_0, mr_data_1;
 	bool error_msg = false, set_qsgerr = false, dqs_fail = false;;
-	bool do17 = false;
 	bool inloop_dxterm = false; /* false for now, lower failure probability */
 	bool trial_1_5_12 = false; /* to be considered to be official= off */
 	bool trial_1_6_12 = false; /* to be considered to be official / 11.12.2017 - pass with flag at false and low voltage*/
@@ -3026,7 +3028,6 @@ static int sw_read_dqs(u32 block)
 					printf( "### end trial_1_17_12\n"); // ddr_htol_debug_verbose 4
 			}
 
-			/* todo, check if 14.a valid */
 			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DCUAR_REG_ADDR, 0x400); /* 14.a */
 			for(j = 0; j < 2; j++) {	
 				for(i = 0; i < 5; i++)
@@ -3035,22 +3036,28 @@ static int sw_read_dqs(u32 block)
 			}
 			for(i = 0; i < 5; i++)
 				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DCUDR_REG_ADDR, 0);
-			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DCUDR_REG_ADDR, 0x000183C0 + (dqsg_rank * 0x20)); /* 13.i */
+			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DCUDR_REG_ADDR, 0x000183C0 + (dqsg_rank * 0x20)); /* 14.i */
 			pub_read_modify_write(block, PUB_DCURR_REG_ADDR, dcurr, eaddr, 0x2);
-			pub_dual_read_modify_write(block, PUB_DCULR_REG_ADDR, dculr, leaddr, 0x2, lcnt, 0x7); /* 13.k */
-			/* todo trail to be performed:
-			 pub_read_modify_write(block, PUB_DCULR_REG_ADDR, dculr, xleaddr, 0 ); */
+			pub_dual_read_modify_write(block, PUB_DCULR_REG_ADDR, dculr, leaddr, 0x2, lcnt, 0x7); /* 14.k */
+
+			 pub_read_modify_write(block, PUB_DCULR_REG_ADDR, dculr, xleaddr, 0 );
 
 			for( j = 0; j < (INDIRECT_RETRY_NUM * INDIRECT_RETRY_NUM); j++) {
 				if( g_ddr_htol_debug_verbose >= 3 )
 					printf( " ifc = %d byte = %d step 14.l : byte_dqsgd %u\n", block, dqsg_byte,byte_dqsgd );// ddr_htol_debug_verbose 3
 
-				pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + addr_offset, dx_x_lcdlr2, dqsgd, byte_dqsgd); /* 13.l */
+				pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + addr_offset, dx_x_lcdlr2, dqsgd, byte_dqsgd); /* 14.l */
+				udelay( 1 );
 				pub_read_modify_write(block, PUB_DCURR_REG_ADDR, dcurr, dinst, 0x2);
+				udelay( 1 );
 				pub_read_modify_write(block, PUB_DCURR_REG_ADDR, dcurr, dinst, 0x4);
+				udelay( 1 );
 				pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x0);
+				udelay( 1 );
 				pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x1);
+				udelay( 1 );
 				pub_read_modify_write(block, PUB_DCURR_REG_ADDR, dcurr, dinst, 0x1);
+				udelay( 1 );
 				for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
 					udelay(1000);
 					dcusr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DCUSR0_REG_ADDR);
@@ -3065,49 +3072,52 @@ static int sw_read_dqs(u32 block)
 					print_fail_pub_dump(block);
 					return -EBUSY;
 				}
-				dcusr1.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DCUSR1_REG_ADDR); /* s */
+				dcusr1.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DCUSR1_REG_ADDR); /* 14.s */
 				if( g_ddr_htol_debug_verbose >= 3 )
 					printf( " ifc = %d byte = %d step 14.s : DCUSR1.RDCNT = %u\n", block, dqsg_byte, dcusr1.fields.rdcnt );// ddr_htol_debug_verbose 3
-				if(!((dcusr1.fields.rdcnt == (2 * repeat_count)) && (byte_first_pass == 0) && (byte_last_pass == 0))) { /* t */
-					if((dcusr1.fields.rdcnt != ( 2 * repeat_count )) && (byte_first_pass == 1) && (byte_last_pass == 0)) { /* u */
-						byte_last_pass = 1; /* x */
+				if( ! ((dcusr1.fields.rdcnt == (2 * repeat_count)) && (byte_first_pass == 0) && (byte_last_pass == 0))) { /* 14.t */
+					if((dcusr1.fields.rdcnt != ( 2 * repeat_count )) && (byte_first_pass == 1) && (byte_last_pass == 0)) { /* 14.u */
+						byte_last_pass = 1; /* 14.x */
 						if( g_ddr_htol_debug_verbose >= 3 )
 							printf("LAST PASS : byte %d byte_dgsl = %d byte_dqsgd = %d\n", dqsg_byte, byte_dgsl, byte_dqsgd);// ddr_htol_debug_verbose 3
 						byte_qsgdone = 1;
 						break;
 					}
 				} else {
-					byte_first_pass = 1; /* w */
+					byte_first_pass = 1; /* 14.w */
 					if( g_ddr_htol_debug_verbose >= 3 )
 						printf("FIRST PASS : byte %d byte_dgsl = %d byte_dqsgd = %d\n", dqsg_byte, byte_dgsl, byte_dqsgd);// ddr_htol_debug_verbose 3
 					byte_dgsl++;
 					pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl);
-					byte_last_pass = 1; /* x */
+					byte_last_pass = 1; /* 14.x */
 					byte_qsgdone = 1;
 					break;
 				}
-				if(((byte_first_pass == 1) && (byte_last_pass == 1)) || (byte_dqsgd < dqsg_limit)) { /* y & z */
-					byte_dqsgd++; /* ee */
+				if(((byte_first_pass == 1) && (byte_last_pass == 1)) || (byte_dqsgd < dqsg_limit)) { /* 14.y & 14.z */
+					byte_dqsgd++; /* 14.ee */
 					continue;
 				}
-				if(byte_dgsl == 18) { /* aa */
+				if(byte_dgsl == 18) { /* 14.aa */
 					set_qsgerr = true;
 					break;
 				}
-				byte_dgsl += 2; /* bb */
-				pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl); /* cc */
+				byte_dgsl += 2; /* 14.bb */
+				pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl); /* 14.cc */
 				if( g_ddr_htol_debug_verbose >= 3 )
 					printf( " ifc = %d byte = %d step 14.cc : byte_dgsl %u\n", block, dqsg_byte, byte_dgsl );// ddr_htol_debug_verbose 3
 
-				byte_dqsgd = 1; /* dd + ee */
+				byte_dqsgd = 1; /* 14.dd + 14.ee */
 			}
-			if(set_qsgerr) /* gg */
+			if(set_qsgerr) /* 14.gg */
 				byte_qsgerr = 1;
+
 			/* 15 */
 			if((byte_qsgdone == 0) || (byte_qsgerr == 1))
 				error_msg = dqs_fail = true;
 			else {
 				if (byte_dgsl != 0) {
+
+					//bool do17 = false;
 					if ( 0 /* do17, step 17 is omitted altogether from flow */ ) {
 						if ( byte_dqsgd >= (dqsg_limit / 2)) {
 							pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + addr_offset, dx_x_gtr0, dgsl, byte_dgsl); /* 18 */
@@ -3149,18 +3159,6 @@ static int sw_read_dqs(u32 block)
 			}
 		}
 	}
-	/* Trial 2 29.11
-	dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (2 * 0x40));
-	dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (2 * 0x40));
-	byte_dqsgd = dx_x_lcdlr2.fields.dqsgd + ( dx_x_mdlr0.fields.iprd /4);
-	pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (2 * 0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
-
-	dx_x_mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + (3 * 0x40));
-	dx_x_lcdlr2.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR2_REG_ADDR + (3 * 0x40));
-	byte_dqsgd = dx_x_lcdlr2.fields.dqsgd + ( dx_x_mdlr0.fields.iprd /4);
-	pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (3 * 0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd );
-	end trial */
-
 
 	pub_read_modify_write(block, PUB_DXCCR_REG_ADDR, dxccr, qscnten, 1); /* step 28 */
 	for( bl_index = 0;bl_index < 4;bl_index++) {
@@ -3205,12 +3203,11 @@ static int sw_read_dqs(u32 block)
 		return -EBUSY;
 	}
 
+	/* todo - TRIAL to be removed pending synp */
 	pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x0);
 	udelay(1);
 	pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x1);
 	udelay(1);
-
-
 
 	return 0;
 }
@@ -3607,108 +3604,6 @@ u32	write_bdl_seeding( u32 block )
 
 
 
-static int synop_pub_pir_step_op( u32 block, u32 cmd )
-{
-	u32 op, i;
-	u32 pir_cmd = cmd & 0xffff00ff;
-	union pub_pgsr0 pgsr0;
-
-	for( op=0 ; op<5 ; op++ ){
-		if( !( ( 1<<(11+op) ) & cmd ) )
-		{
-			continue;
-		}
-
-		emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],
-										       PUB_PIR_REG_ADDR,
-											   ( pir_cmd | ( 1<<(11+op) ) ));
-
-		for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
-			udelay(100);
-			pgsr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block],
-														PUB_PGSR0_REG_ADDR);
-			if (pgsr0.fields.idone == 1)
-					break;
-		}
-		if (i == INDIRECT_RETRY_NUM) {
-			error("synop_pub_pir_step_op: data training timeout (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-					current_ddr_params.clock_frequency, block, pgsr0.reg);
-			return -EBUSY;
-		}
-
-		switch( op ){
-		case 0:
-			if( pgsr0.fields.wladone != 1 ){
-				error("synop_pub_pir_step_op: data training wladone done bit not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			else if( pgsr0.fields.wlaerr != 0 ){
-				error("synop_pub_pir_step_op: data training found wlaerr error bit set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			break;
-		case 1:
-			if( pgsr0.fields.rddone != 1 ){
-				error("synop_pub_pir_step_op: data training rddone done bit not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			else if( pgsr0.fields.rderr != 0 ){
-				error("synop_pub_pir_step_op: data training found rderr error bit set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			break;
-		case 2:
-			if( pgsr0.fields.wddone != 1 ){
-				error("synop_pub_pir_step_op: data training wddone done bit not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			else if( pgsr0.fields.wderr != 0 ){
-				error("synop_pub_pir_step_op: data training found wderr error bit set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			break;
-		case 3:
-			if( pgsr0.fields.redone != 1 ){
-				error("synop_pub_pir_step_op: data training redone done bit not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			else if( pgsr0.fields.reerr != 0 ){
-				error("synop_pub_pir_step_op: data training found reerr error bit set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			break;
-		case 4:
-			if( pgsr0.fields.wedone != 1 ){
-				error("synop_pub_pir_step_op: data training wedone done bit not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			else if( pgsr0.fields.weerr != 0 ){
-				error("synop_pub_pir_step_op: data training found weerr error bit set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
-						current_ddr_params.clock_frequency, block, pgsr0.reg);
-				return -EBUSY;
-			}
-			break;
-		default:
-			break;
-
-		}
-
-	}
-
-	return 0;
-}
-
-
-
 int	ddr_training(void)
 {
 	u32 wl_mr1_data, wl_mr2_data, block, mc, i;
@@ -3723,7 +3618,6 @@ int	ddr_training(void)
 	bool status = true, sw_status;
 	bool sw_rdqs = true, sw_rdqs_nrml = true, sw_wl = true, sw_wl_nrml = true;
 	bool enable_seeding = false;
-	bool pir_steps = false;
 	bool trial_4_18_12 = false;
 
 
@@ -4082,7 +3976,8 @@ int	ddr_training(void)
 	}
 
 	if (!status) {
-		//print_fail_pub_dump(failed_block);
+		if ( g_ddr_dump_verbose >= 4 )
+		   print_fail_pub_dump(failed_block);
 		return -1;
 	}
 
@@ -5496,13 +5391,6 @@ int configure_emem(void)
 		}
 	}
 	sdram_init();
-
-	if ( 0 ) { /* trial - to be removed? */
-		ddr_int_loopback_test( 0x0);
-		print_pub_dump(0);
-		return -1;
-	}
-
 
 	if (!current_ddr_params.training_bypass) {
 		status = ddr_training();
