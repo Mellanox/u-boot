@@ -381,6 +381,10 @@
 #define	PUB_DX2BDLR4_REG_ADDR		0x255
 #define	PUB_DX3BDLR4_REG_ADDR		0x295
 
+#define	PUB_DX0BDLR5_REG_ADDR		0x1D6
+#define	PUB_DX1BDLR5_REG_ADDR		0x216
+#define	PUB_DX2BDLR5_REG_ADDR		0x256
+#define	PUB_DX3BDLR5_REG_ADDR		0x296
 
 #define	PUB_DX0MDLR0_REG_ADDR		0x1E8
 #define	PUB_DX1MDLR0_REG_ADDR		0x228
@@ -416,6 +420,7 @@
 	POST_DDR_TRAINING_FAILED,
 	BIST_FAILED,
 	VREF_TRAINING_FAILED,
+	SW_WL_NORMALIZATION_FAILED
 };
 
 #define BYTE_LANE_0_OR_1_PUB_REG(__reg)\
@@ -1195,6 +1200,17 @@ union pub_dx_x_bdlr4 {
 
 
 
+union pub_dx_x_bdlr5 {
+	u32	reg;
+	struct {
+		u32 reserved22_31:10;
+		u32 dsnrbd:6;
+		u32 reserved14_15:2;
+		u32 dsrbd:6;
+		u32 reserved6_7:2;
+		u32 dmrbd:6;
+	} fields;
+};
 
 union pub_dx_x_mdlr0 {
 	u32	reg;
