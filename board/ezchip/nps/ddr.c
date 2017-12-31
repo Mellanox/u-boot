@@ -48,21 +48,20 @@ int	g_EZsim_mode = 0;
 
 #define VREF_PER_RANK
 
+u32 g_ddr_fail_dump_verbose=0;
 u32 g_ddr_dump_verbose=0;
-u32 g_ddr_htol_debug_verbose=1;
-
-u32 phy_init_fail_block = 0;
+u32 g_ddr_htol_debug_verbose=0;
+bool g_htol_sw_wa=true;
+/* command pup_fail_dump sets flag to print all pub registers in case of failure */
+bool g_pup_fail_dump = false;
 
 static int skip_mc_mask = 0;
-static int do_htol_wa = true;
 bool g_int_lb_mode = false;
 static void configure_relax_mc(void);
 static void set_ddr_double_refresh(void);
 static void configure_emem_mi(void);
 static void ddr_phy_reset_internal_read_fifos(u32 port);
 
-/* command pup_fail_dump sets flag to print all pub registers in case of failure */
-bool g_pup_fail_dump = false;
 /* pause between steps */
 bool g_ddr_pause = false;
 u32 g_ddr_training_pir_val= INVALID_VAL;
@@ -1832,13 +1831,29 @@ static void get_ddr_parameters(void)
 	char *env_speed_bin;
 	char *env_size;
 	char *env_skip_mc;
+	char *env_ddr;
 	char *env_double_refresh;
-	int  htol_wa;
 	union crg_gen_purp_1 gen_purp_1;
 	union crg_gen_purp_2 gen_purp_2;
 	u32 boot_cfg, package = 8;
 
 	memcpy(&current_ddr_params, &ddr_config_0, sizeof(struct ddr_params));
+
+	env_ddr = getenv("htol_sw_wa");
+	if( env_ddr )
+		g_htol_sw_wa = (getenv_yesno("htol_sw_wa") == 1);
+	env_ddr = getenv("ddr_dump_verbose");
+	if( env_ddr )
+		g_ddr_dump_verbose = simple_strtoul(env_ddr, NULL, 10);
+	env_ddr = getenv("ddr_htol_debug_verbose");
+	if( env_ddr )
+		g_ddr_htol_debug_verbose = simple_strtoul(env_ddr, NULL, 10);
+	env_ddr = getenv("ddr_fail_dump_verbose");
+	if( env_ddr )
+		g_ddr_fail_dump_verbose = simple_strtoul(env_ddr, NULL, 10);
+	env_ddr = getenv("pup_fail_dump");
+	if( env_ddr )
+		g_pup_fail_dump = (getenv_yesno("pup_fail_dump") == 1);
 
 	env_skip_mc = getenv("ddr_skip_mc");
 	if(env_skip_mc)
@@ -1850,10 +1865,6 @@ static void get_ddr_parameters(void)
 	env_freq = getenv("ddr_freq");
 	if(env_freq)
 		current_ddr_params.clock_frequency = simple_strtoul(env_freq, NULL, 10);
-
-	htol_wa = getenv_yesno("htol_wa");
-	if(htol_wa == -1 || htol_wa == 0)
-		do_htol_wa = false;
 
 	if(current_ddr_params.clock_frequency <= 400)
 		current_ddr_params.pll_freq = DDR_400_MHz;
@@ -2308,7 +2319,7 @@ static int dll_calibration_fail_recovery(u32 ifc)
 	int index, half_ui;
 	u32 res_acmdlr, res_dxmdlr[4];
 
-	bool trial_1_19_12 = true; /* updated base for 19.12.2017 */
+	bool dll_rec_change_0_3_19_12_2017 = true; /* updated base for 19.12.2017 */
 
 	if(SKIP_IFC(ifc))
 		return 0;
@@ -2369,100 +2380,67 @@ static int dll_calibration_fail_recovery(u32 ifc)
 		half_ui = DDR_ROUND_UP( res_dxmdlr[index], 2 );
 
 
-		if( trial_1_19_12 ){
+		if( dll_rec_change_0_3_19_12_2017 ){
 			pub_dual_read_modify_write(ifc, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 0, rankwid, 0);
-
-			/* todo remove
-			union pub_dx_x_lcdlr2 dx_x_lcdlr2[4];
-			union pub_dx_x_lcdlr0 dx_x_lcdlr0[4];
-
-			 *
-			dx_x_lcdlr0[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
-					PUB_DX0LCDLR0_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
-			dx_x_lcdlr0[index].fields.wld = 0;
-			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR0_REG_ADDR + (index*0x40), 1, dx_x_lcdlr0[index].reg, 0, 0x101);
-			printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 0 lcdlr0 = %u\n", ifc, index, dx_x_lcdlr0[index].reg );
-
-			dx_x_lcdlr2[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
-					PUB_DX0LCDLR2_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
-			dx_x_lcdlr2[index].fields.dqsgd = 0;
-			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR2_REG_ADDR + (index*0x40), 1, dx_x_lcdlr2[index].reg, 0, 0x101);
-			printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 0 lcdlr2 = %u\n", ifc, index, dx_x_lcdlr2[index].reg );
-			*/
 
 			dx_x_lcdlr1[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR1_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr1[index].fields.wdqd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR1_REG_ADDR + (index*0x40), 1, dx_x_lcdlr1[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 0 lcdlr1 = %u\n", ifc, index, dx_x_lcdlr1[index].reg ); // ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 0 lcdlr1 = %u\n", ifc, index, dx_x_lcdlr1[index].reg ); // ddr_htol_debug_verbose 4
 
 			dx_x_lcdlr3[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR3_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr3[index].fields.rdqsd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR3_REG_ADDR + (index*0x40), 1, dx_x_lcdlr3[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 0 lcdlr3 = %u\n", ifc, index, dx_x_lcdlr3[index].reg );// ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 0 lcdlr3 = %u\n", ifc, index, dx_x_lcdlr3[index].reg );// ddr_htol_debug_verbose 4
 
 			dx_x_lcdlr4[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR4_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr4[index].fields.rdqsnd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR4_REG_ADDR + (index*0x40), 1, dx_x_lcdlr4[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 0 lcdlr4 = %u\n", ifc, index, dx_x_lcdlr4[index].reg );// ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 0 lcdlr4 = %u\n", ifc, index, dx_x_lcdlr4[index].reg );// ddr_htol_debug_verbose 4
 
 			dx_x_lcdlr5[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR5_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr5[index].fields.dqsgsd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR5_REG_ADDR + (index*0x40), 1, dx_x_lcdlr5[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 0 lcdlr5 = %u\n", ifc, index, dx_x_lcdlr5[index].reg );// ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 0 lcdlr5 = %u\n", ifc, index, dx_x_lcdlr5[index].reg );// ddr_htol_debug_verbose 4
 
 
 			pub_dual_read_modify_write(ifc, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 1, rankwid, 1);
 
-			/* todo remove
-			dx_x_lcdlr0[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
-					PUB_DX0LCDLR0_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
-			dx_x_lcdlr0[index].fields.wld = 0;
-			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR0_REG_ADDR + (index*0x40), 1, dx_x_lcdlr0[index].reg, 0, 0x101);
-			printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 1 lcdlr0 = %u\n", ifc, index, dx_x_lcdlr0[index].reg );
-
-			dx_x_lcdlr2[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
-					PUB_DX0LCDLR2_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
-			dx_x_lcdlr2[index].fields.dqsgd = 0;
-			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR2_REG_ADDR + (index*0x40), 1, dx_x_lcdlr2[index].reg, 0, 0x101);
-			printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 1 lcdlr2 = %u\n", ifc, index, dx_x_lcdlr2[index].reg );
-			*/
-
-
 			dx_x_lcdlr1[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR1_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr1[index].fields.wdqd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR1_REG_ADDR + (index*0x40), 1, dx_x_lcdlr1[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 1 lcdlr1 = %u\n", ifc, index, dx_x_lcdlr1[index].reg );// ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 1 lcdlr1 = %u\n", ifc, index, dx_x_lcdlr1[index].reg );// ddr_htol_debug_verbose 4
 
 			dx_x_lcdlr3[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR3_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr3[index].fields.rdqsd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR3_REG_ADDR + (index*0x40), 1, dx_x_lcdlr3[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 1 lcdlr3 = %u\n", ifc, index, dx_x_lcdlr3[index].reg );// ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 1 lcdlr3 = %u\n", ifc, index, dx_x_lcdlr3[index].reg );// ddr_htol_debug_verbose 4
 
 			dx_x_lcdlr4[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR4_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr4[index].fields.rdqsnd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR4_REG_ADDR + (index*0x40), 1, dx_x_lcdlr4[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 1 lcdlr4 = %u\n", ifc, index, dx_x_lcdlr4[index].reg );// ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 1 lcdlr4 = %u\n", ifc, index, dx_x_lcdlr4[index].reg );// ddr_htol_debug_verbose 4
 
 			dx_x_lcdlr5[index].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[ifc],
 					PUB_DX0LCDLR5_REG_ADDR + (index*0x40), 0x100, g_EZsim_mode);
 			dx_x_lcdlr5[index].fields.dqsgsd = half_ui;
 			emem_mc_write_indirect_reg(emem_mc_block_id[ifc], PUB_DX0LCDLR5_REG_ADDR + (index*0x40), 1, dx_x_lcdlr5[index].reg, 0, 0x101);
 			if( g_ddr_htol_debug_verbose >= 4 )
-				printf( " ifc = %d byte = %d trial_1_19_12 : rankwid = 1 lcdlr5 = %u\n", ifc, index, dx_x_lcdlr5[index].reg );// ddr_htol_debug_verbose 4
+				printf( " ifc = %d byte = %d dll_recovery half ui set up : rankwid = 1 lcdlr5 = %u\n", ifc, index, dx_x_lcdlr5[index].reg );// ddr_htol_debug_verbose 4
 		}
 		else{
 			dx_x_lcdlr1[index].reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[ifc], PUB_DX0LCDLR1_REG_ADDR + (index*0x40));
@@ -2503,6 +2481,8 @@ int phy_init(void)
 	env = getenv( "sw_calib_recovery" );
 	if( env )
 		sw_calib_recovery = (getenv_yesno("sw_calib_recovery") == 1);
+	sw_calib_recovery = sw_calib_recovery && g_htol_sw_wa;
+
 	env = getenv("ddr_reset");
 	if( env)
 		ddr_reset = (getenv_yesno("ddr_reset") == 1);
@@ -2612,6 +2592,7 @@ static int sw_read_dqs_normalization(u32 block)
 	union pub_dx_x_gtr0 dx_x_gtr0;
 	union pub_dx_x_mdlr0 dx_x_mdlr0;
 	union pub_dx_x_lcdlr2 dx_x_lcdlr2;
+	bool skip_new_addition = false;
 
 	if( g_ddr_htol_debug_verbose >= 1 )
 		printf("==== sw_read_dqs_normalization  ( Phy interface %d ) ====    \n", block );// ddr_htol_debug_verbose 1
@@ -2649,22 +2630,25 @@ static int sw_read_dqs_normalization(u32 block)
 				/* 12 */
 				pub_read_modify_write(block, PUB_DX0GTR0_REG_ADDR + (bl_index*0x40), dx_x_gtr0, dgsl, byte_dgsl);
 				pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (bl_index*0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
-
-				/* 14 new addition 25.12.2017 */
-				if( byte_dqsgd < ( ( byte_iprd*3 ) / 2 ) ){
-					/* 15 */
-					half_ui = byte_iprd / 2;
-					reg = ( half_ui ) | ( half_ui << 8 ) | ( half_ui <<16 ) | ( half_ui<<24 );
-					emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DX0BDLR3_REG_ADDR + (bl_index*0x40), reg);
-					emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DX0BDLR4_REG_ADDR + (bl_index*0x40), reg);
-					pub_dual_read_modify_write(block, PUB_DX0BDLR5_REG_ADDR + (bl_index*0x40), dx_x_bdlr5, dsrbd, half_ui, dsnrbd, half_ui);
-
-					byte_dqsgd = byte_dqsgd + half_ui;
-					pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (bl_index*0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
-				}
-
-				/* byte_nom_done = 1; */
 			}
+			/* 14 new addition 25.12.2017 */
+			if( g_ddr_htol_debug_verbose >= 2 ) {// ddr_htol_debug_verbose 2
+				if( skip_new_addition )
+					printf( " ifc = %d byte = %d dqs_norm : skipping 1.5 UI check & 0.5 UI addition\n", block, bl_index );
+			}
+			if( !(skip_new_addition ) &&
+				 (byte_dqsgd < ( ( byte_iprd*3 ) / 2 ) ) ){
+				/* 15 */
+				half_ui = byte_iprd / 2;
+				reg = ( half_ui ) | ( half_ui << 8 ) | ( half_ui <<16 ) | ( half_ui<<24 );
+				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DX0BDLR3_REG_ADDR + (bl_index*0x40), reg);
+				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DX0BDLR4_REG_ADDR + (bl_index*0x40), reg);
+				pub_dual_read_modify_write(block, PUB_DX0BDLR5_REG_ADDR + (bl_index*0x40), dx_x_bdlr5, dsrbd, half_ui, dsnrbd, half_ui);
+
+				byte_dqsgd = byte_dqsgd + half_ui;
+				pub_read_modify_write(block, PUB_DX0LCDLR2_REG_ADDR + (bl_index*0x40), dx_x_lcdlr2, dqsgd, byte_dqsgd);
+			}
+			/* byte_nom_done = 1; */
 		}
 		else{
 			/* 17 */
@@ -2815,7 +2799,7 @@ int ddr_int_loopback_test( u32 block )
 	return 0;
 }
 
-/* TODO consider removing - used for debug steps of htol */
+/* TODO consider removing - used for debug steps of htol
 static void sw_wa_inc_all_lcdlr(u32 block)
 {
 	u32 bl_index;
@@ -2892,7 +2876,7 @@ static void sw_wa_inc_all_lcdlr(u32 block)
 
 	return;
 }
-
+*/
 
 static void seed_write_bdls( u32 block )
 {
@@ -2953,8 +2937,6 @@ static int sw_read_dqs(u32 block)
 	u32 mr_data_0, mr_data_1;
 	bool error_msg = false, set_qsgerr = false, dqs_fail = false;;
 	bool inloop_dxterm = false; /* false for now, lower failure probability */
-	bool trial_1_5_12 = false; /* to be considered to be official= off */
-	bool trial_1_6_12 = false; /* to be considered to be official / 11.12.2017 - pass with flag at false and low voltage*/
 	bool trial_1_17_12 = true;	/* official update */
 
 	if( g_ddr_htol_debug_verbose >= 1 )
@@ -2976,19 +2958,9 @@ static int sw_read_dqs(u32 block)
 	pub_read_modify_write(block, PUB_PGCR1_REG_ADDR, pgcr1, pub_mode, 0x1);
 	pub_read_modify_write(block, PUB_PGCR6_REG_ADDR, pgcr6, inhvt, 1);
 
-	if( trial_1_5_12 ){ /* trial 1 - 5.12 */
-		pub_read_modify_write(block, PUB_PGCR4_REG_ADDR, pgcr4, dxddlld, 0x1f);
-		pub_dual_read_modify_write(block, PUB_PGCR7_REG_ADDR, pgcr7, dxgdbyp, 1, dxddlldt, 1);
-	}
-
 	for (bl_index = 0;bl_index < 4; bl_index++) {
 		addr_offset = bl_index * 0x40;
-		if( trial_1_6_12 ){
-			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dqsgpdr, 1);
-		}
-		else {
-			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0);
-		}
+		pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0);
 		if ( !inloop_dxterm ){
 			pub_read_modify_write(block, PUB_DX0GCR2_REG_ADDR + addr_offset, dx_n_gcr2, dxtemode, 0x5555);
 			pub_read_modify_write(block, PUB_DX0GCR3_REG_ADDR + addr_offset, dx_n_gcr3, dstemode, 0x1);
@@ -3010,12 +2982,7 @@ static int sw_read_dqs(u32 block)
 
 			dqsg_byte = (dqsg_rank * 2) + bl_index;
 			addr_offset = dqsg_byte * 0x40;
-			if( trial_1_6_12 ){
-				pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dqsgpdr, 0);
-			}
-			else {
-				pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 1); /* 9 */
-			}
+			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 1); /* 9 */
 			if ( inloop_dxterm ){
 				pub_read_modify_write(block, PUB_DX0GCR2_REG_ADDR + addr_offset, dx_n_gcr2, dxtemode, 0x5555);
 				pub_read_modify_write(block, PUB_DX0GCR3_REG_ADDR + addr_offset, dx_n_gcr3, dstemode, 0x1);
@@ -3168,12 +3135,8 @@ static int sw_read_dqs(u32 block)
 				error(" ifc = %u  byte = %u Read DQS failure\n", block, dqsg_byte);
 				error("Block %u The Maximum system latency reached without finding first pass or the Read DQS Gate position cannot be decremented by 1 UI", block);
 			}
-			if( trial_1_6_12 ){
-				pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dqsgpdr, 1);
-			}
-			else {
-				pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x0); /* 25 */
-			}
+			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x0); /* 25 */
+
 			if ( inloop_dxterm ){
 				pub_read_modify_write(block, PUB_DX0GCR2_REG_ADDR + addr_offset, dx_n_gcr2, dxtemode, 0x0);
 				pub_read_modify_write(block, PUB_DX0GCR3_REG_ADDR + addr_offset, dx_n_gcr3, dstemode, 0x0);
@@ -3184,20 +3147,12 @@ static int sw_read_dqs(u32 block)
 	pub_read_modify_write(block, PUB_DXCCR_REG_ADDR, dxccr, qscnten, 1); /* step 28 */
 	for( bl_index = 0;bl_index < 4;bl_index++) {
 		addr_offset = bl_index * 0x40;
-		if( trial_1_6_12 ){
-			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dqsgpdr, 0);
-		}
-		else {
-			pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x1);
-		}
+		pub_read_modify_write(block, PUB_DX0GCR0_REG_ADDR + addr_offset, dx_n_gcr0, dxen, 0x1);
+
 		if ( !inloop_dxterm ){
 			pub_read_modify_write(block, PUB_DX0GCR2_REG_ADDR + addr_offset, dx_n_gcr2, dxtemode, 0x0);
 			pub_read_modify_write(block, PUB_DX0GCR3_REG_ADDR + addr_offset, dx_n_gcr3, dstemode, 0x0);
 		}
-	}
-	if( trial_1_5_12 ){ /* trial 1 - 5.12 */
-		pub_read_modify_write(block, PUB_PGCR4_REG_ADDR, pgcr4, dxddlld, 0);
-		pub_dual_read_modify_write(block, PUB_PGCR7_REG_ADDR, pgcr7, dxgdbyp, 0, dxddlldt, 0);
 	}
 
 	pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 0, rankwid, 0);
@@ -3247,10 +3202,10 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 	u32 i, byte_validated, wl_validation_window, wl_validation_count, wl_step;
 	int wldly;
 	bool byte_error = false;
-	bool trial_3_18_12 = false;
-	bool trial_1_20_12 = true; /* should be always enabled */
-	bool trial_2_20_12 = true; /* should be always enabled */
-	bool trial_oded_1_21_12 = true;
+	bool wr_lvl_change_1_1_a_20_12 = true; /* should be always enabled */
+	bool wr_lvl_change_1_1_b_20_12 = true; /* should be always enabled */
+	bool change_oded_1_21_12 = true;
+	bool trial_oded_1_27_12 = false;
 	u32 wcal_offset;
 
 	if( g_ddr_htol_debug_verbose >= 1 )
@@ -3307,7 +3262,7 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 			wl_validation_count = 0;
 			wl_step = 8;
 
-			if( trial_oded_1_21_12 ){
+			if( change_oded_1_21_12 ){
 				dx_x_gsr0[wl_byte].reg = emem_mc_indirect_reg_read_synop(
 						emem_mc_block_id[block], PUB_DX0GSR0_REG_ADDR + (wl_byte * 0x40));
 				wcal_offset = 0;
@@ -3325,9 +3280,10 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 									PUB_DX0LCDLR0_REG_ADDR + addr_offset, 0x100, g_EZsim_mode);
 				if( g_ddr_htol_debug_verbose >= 3 )
 					printf( " ifc = %d byte = %d Step 10.a : pre-write LCDLR0.WLD = 0x%x \n", block, wl_byte, dx_x_lcdlr0[wl_byte].fields.wld );
-				if( trial_oded_1_21_12 ){
+				if( change_oded_1_21_12 ){
 					dx_x_lcdlr0[wl_byte].fields.wld = wldly + wcal_offset;
-					printf( " ifc = %d byte = %d Step 10.b : wldly = %u LCDLR0.wld = %u \n", block, wl_byte, wldly, dx_x_lcdlr0[wl_byte].fields.wld );
+					if( g_ddr_htol_debug_verbose >= 3 )
+						printf( " ifc = %d byte = %d Step 10.b : wldly = %u LCDLR0.wld = %u \n", block, wl_byte, wldly, dx_x_lcdlr0[wl_byte].fields.wld );
 				}
 				else{
 					dx_x_lcdlr0[wl_byte].fields.wld = wldly;
@@ -3412,10 +3368,53 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 
 				}
 
+				if( trial_oded_1_27_12 ){ /* maybe step 12.5 */
+					u32 continuity;
+
+					wldly = byte_wldly + wl_step;
+
+					while( wldly > ( byte_wldly - wl_step ) ){
+						dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
+									PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
+						dx_x_lcdlr0[wl_byte].fields.wld = wldly;
+						emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40),
+													 1, dx_x_lcdlr0[wl_byte].reg, 0, 0x101);
+
+						for( continuity=0;continuity<10;continuity++ ){
+							emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x40200);
+
+							for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
+								udelay(1000);
+								pgsr0.reg = emem_mc_indirect_reg_read_synop(
+											emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
+								if (pgsr0.fields.wldone == 1)
+									break;
+							}
+							if (i == INDIRECT_RETRY_NUM && !g_EZsim_mode) {
+								error("sw_write_leveling: timeout in write leveling in block %d, PGSR0 status = 0x%08X", block, pgsr0.reg);
+								print_fail_pub_dump(block);
+								return -EBUSY;
+							}
+
+							dx_x_gsr0[wl_byte].reg = emem_mc_indirect_reg_read_synop(
+									emem_mc_block_id[block], PUB_DX0GSR0_REG_ADDR + (wl_byte * 0x40));
+							byte_dq = dx_x_gsr0[wl_byte].fields.wldq;
+							if( byte_dq == 0 ){
+								break;
+							}
+							wldly--;
+						}
+						if( byte_dq == 0 ){
+							break;
+						}
+					}
+					byte_wldly = wldly;
+				}
+
 				/* Step 13 */
 				if ( byte_validated == 1) {
 
-					if( trial_1_20_12 ){ /* resolving non zero value on rank 0 bytes 2-3 */
+					if( wr_lvl_change_1_1_a_20_12 ){ /* resolving non zero value on rank 0 bytes 2-3 */
 						pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 0, rankwid, 0);
 						dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
 											PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
@@ -3425,51 +3424,30 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 
 					}
 
-					if( trial_3_18_12 ){ /* TODO currently false, to be removed later  */
-						pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 0, rankwid, 0);
-						dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
-											PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
-						dx_x_lcdlr0[wl_byte].fields.wld = byte_wldly;
-						emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40),
-																												1, dx_x_lcdlr0[wl_byte].reg, 0, 0x101);
-						if( g_ddr_htol_debug_verbose >= 4 )
-							printf( " ifc = %d byte = %d trial 3_18_12 : rankwid = 0   byte_wldly = %d\n", block, wl_byte, byte_wldly ); // ddr_htol_debug_verbose 4
+					/* Step 14 */
+					pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, wl_rank, rankwid, wl_rank);
 
-						pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 1, rankwid, 1);
-						dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
-											PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
-						dx_x_lcdlr0[wl_byte].fields.wld = byte_wldly;
-						emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40),
-																												1, dx_x_lcdlr0[wl_byte].reg, 0, 0x101);
-						if( g_ddr_htol_debug_verbose >= 4 )
-							printf( " ifc = %d byte = %d trial 3_18_12 : rankwid = 1   byte_wldly = %d\n", block, wl_byte, byte_wldly ); // ddr_htol_debug_verbose 4
-					}
-					else{
-						/* Step 14 */
-						pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, wl_rank, rankwid, wl_rank);
+					/* Step 15 */
+					if( wr_lvl_change_1_1_b_20_12 ){
+						if( byte_wldly > dx_x_mdlr0[wl_byte].fields.iprd  ){
+							byte_wldly -= dx_x_mdlr0[wl_byte].fields.iprd;
 
-						/* Step 15 */
-						if( trial_2_20_12 ){
-							if( byte_wldly > dx_x_mdlr0[wl_byte].fields.iprd  ){
-								byte_wldly -= dx_x_mdlr0[wl_byte].fields.iprd;
+							gtr0.reg = emem_mc_read_indirect_reg(emem_mc_block_id[block],
+												PUB_DX0GTR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
+							gtr0.fields.wlsl += 1;
+							emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (wl_byte * 0x40),
+																													1, gtr0.reg, 0, 0x101);
 
-								gtr0.reg = emem_mc_read_indirect_reg(emem_mc_block_id[block],
-													PUB_DX0GTR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
-								gtr0.fields.wlsl += 1;
-								emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + (wl_byte * 0x40),
-																														1, gtr0.reg, 0, 0x101);
-
-							}
 						}
-						/* Step 16 */
-						dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
-											PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
-						dx_x_lcdlr0[wl_byte].fields.wld = byte_wldly;
-						emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40),
-																												1, dx_x_lcdlr0[wl_byte].reg, 0, 0x101);
-						if( g_ddr_htol_debug_verbose >= 3 )
-							printf( " ifc = %d byte = %d Step 14 : byte_wldly = %d\n", block, wl_byte, byte_wldly); // ddr_htol_debug_verbose 3
 					}
+					/* Step 16 */
+					dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
+										PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40), 0x100, g_EZsim_mode);
+					dx_x_lcdlr0[wl_byte].fields.wld = byte_wldly;
+					emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40),
+																											1, dx_x_lcdlr0[wl_byte].reg, 0, 0x101);
+					if( g_ddr_htol_debug_verbose >= 3 )
+						printf( " ifc = %d byte = %d Step 14 : byte_wldly = %d\n", block, wl_byte, byte_wldly); // ddr_htol_debug_verbose 3
 				}
 				else {
 					byte_error = true;
@@ -3484,33 +3462,6 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 			if( g_ddr_htol_debug_verbose >= 3 )
 				printf(" ifc = %d byte = %d  end step 14 : wldly = %d byte_wldly = %d byte_wldone = %d byte_dq = %d byte_prevdq = %d byte_validated = %d wl_validation_window = %d wl_validation_count = %d\n",
 						block, wl_byte, wldly, byte_wldly, byte_wldone, byte_dq, byte_prevdq, byte_validated, wl_validation_window, wl_validation_count); // ddr_htol_debug_verbose 3
-
-			if( 0 ){ /* Vishal trial write per bits skew isssue 13.12.2017 */
-				union pub_dx_x_mdlr0  mdlr0;
-				union pub_dx_x_lcdlr0 lcdlr0;
-				union pub_dx_x_gtr0 gtr0;
-
-				mdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0MDLR0_REG_ADDR + addr_offset);
-				lcdlr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + addr_offset);
-				gtr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + addr_offset);
-				if( g_ddr_htol_debug_verbose >= 4 ){
-					printf( " ifc = %d byte = %d write_leveling : read mdlr0.iprd %u\n", block, wl_byte, mdlr0.fields.iprd ); // ddr_htol_debug_verbose 4
-					printf( " ifc = %d byte = %d write_leveling : read lcdlr0.wld %u\n", block, wl_byte, lcdlr0.fields.wld );// ddr_htol_debug_verbose 4
-					printf( " ifc = %d byte = %d write_leveling : read gtr0.wlsl %u\n", block, wl_byte, gtr0.fields.wlsl );// ddr_htol_debug_verbose 4
-				}
-
-				if( /*( gtr0.fields.wlsl == 0 ) && */ ( lcdlr0.fields.wld >= (2*mdlr0.fields.iprd ) ) ){
-					//gtr0.fields.wlsl += 2;
-					lcdlr0.fields.wld -= (2*mdlr0.fields.iprd );
-				}
-
-				if( g_ddr_htol_debug_verbose >= 4 ){
-					printf( " ifc = %d byte = %d write_leveling : write lcdlr0.wld %u\n", block, wl_byte, lcdlr0.fields.wld ); // ddr_htol_debug_verbose 4
-					printf( " ifc = %d byte = %d write_leveling : write gtr0.wlsl %u\n", block, wl_byte, gtr0.fields.wlsl );// ddr_htol_debug_verbose 4
-				}
-				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + addr_offset, lcdlr0.reg);
-				//emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_DX0GTR0_REG_ADDR + addr_offset, gtr0.reg);
-			}
 		}
 	}
 
@@ -3656,10 +3607,9 @@ int	ddr_training(void)
 	union	pub_dx_x_lcdlr2 dx_x_lcdlr2;
 	union	pub_dx_x_mdlr0 dx_x_mdlr0;
 	char *env;
-	bool status = true, sw_status;
-	bool sw_rdqs = true, sw_rdqs_nrml = true, sw_wl = true, sw_wl_nrml = true;
-	bool enable_seeding = false;
-	bool trial_4_18_12 = false;
+	bool status = true, sw_status, phy_pass = true;
+	bool sw_rdqs = true, sw_rdqs_nrml = true, sw_wl = true;
+	bool enable_wr_dbl_seeding = false; /* to be used for write per bits skew issues */
 
 
 	if (get_debug())
@@ -3675,15 +3625,17 @@ int	ddr_training(void)
 	env = getenv( "sw_write_leveling" );
 	if( env )
 		sw_wl = (getenv_yesno("sw_write_leveling") == 1);
-	env = getenv( "sw_write_leveling_nrml" );
-	if( env )
-		sw_wl_nrml = (getenv_yesno("sw_write_leveling_nrml") == 1);
+	sw_wl = sw_wl && g_htol_sw_wa;
+
 	env = getenv( "sw_rdqs" );
 	if( env )
 		sw_rdqs = (getenv_yesno("sw_rdqs") == 1);
+	sw_rdqs = sw_rdqs && g_htol_sw_wa;
+
 	env = getenv( "sw_rdqs_nrml" );
 	if( env )
 		sw_rdqs_nrml = (getenv_yesno("sw_rdqs_nrml") == 1);
+	sw_rdqs_nrml = sw_rdqs_nrml && g_htol_sw_wa;
 
 
 	for (block = 0; block < EMEM_MC_NUM_OF_BLOCKS; block++) {
@@ -3779,6 +3731,7 @@ int	ddr_training(void)
 			if(SKIP_IFC(block))
 				continue;
 
+			phy_pass = true;
 			if (sw_rdqs) {
 				sw_status = sw_read_dqs(block);
 
@@ -3788,13 +3741,6 @@ int	ddr_training(void)
 
 				if( sw_rdqs_nrml ){
 					sw_read_dqs_normalization( block );
-				}
-
-				//sw_wa_inc_all_lcdlr( block ); -  old trial not required anymore.
-
-				if( trial_4_18_12){
-					printf( "### trial 4 18_12 DXCCR.RKLOOP = 0\n" ); /* to be removed */
-					pub_read_modify_write(block, PUB_DXCCR_REG_ADDR, dxccr, rkloop, 0x0);
 				}
 
 				if( g_ddr_dump_verbose >= 2  ){ // #1 vb level 2
@@ -3827,7 +3773,7 @@ int	ddr_training(void)
 				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],
 								PUB_PIR_REG_ADDR, g_ddr_training_pir_val);
 			else if(sw_rdqs){
-				if( enable_seeding ){
+				if( enable_wr_dbl_seeding ){
 					write_bdl_seeding( block );
 				}
 
@@ -3842,7 +3788,7 @@ int	ddr_training(void)
 					pub_read_modify_write( block, PUB_DTCR1_REG_ADDR, dtcr1, rdprmvl_trn, 0x1);
 					emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x40401);
 				} else{
-					if( enable_seeding ){
+					if( enable_wr_dbl_seeding ){
 						write_bdl_seeding( block );
 					}
 					emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x4F801);
@@ -3876,7 +3822,7 @@ int	ddr_training(void)
 				if (i == INDIRECT_RETRY_NUM) {
 					error("ddr_training: full data training timeout (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
-					status = false;
+					phy_pass = status = false;
 					print_fail_pub_dump(block);
 					return -EBUSY;
 				} else {
@@ -3892,18 +3838,18 @@ int	ddr_training(void)
 							error("ddr_training: full data training found done bits not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
 							failed_block = block;
-							status = false;
+							phy_pass = status = false;
 					}
 					else if( ( sw_rdqs ) &&
 							 ( (pgsr0.fields.wladone != 1  && (iter == 0)) ||
-							   (pgsr0.fields.rddone  != 1  && (iter == 0)) ||  /* trial 3 13.12 */
-							   (pgsr0.fields.wddone  != 1  && (iter == 0)) ||  /* trial 3 13.12 */
+							   (pgsr0.fields.rddone  != 1  && (iter == 0)) ||
+							   (pgsr0.fields.wddone  != 1  && (iter == 0)) ||
 							   (pgsr0.fields.redone  != 1  && (iter == 0)) ||
 							   (pgsr0.fields.wedone  != 1  && (iter == 0))    ) ){
 						error("ddr_training: full data training found done bits not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 						current_ddr_params.clock_frequency, block, pgsr0.reg);
 						failed_block = block;
-						status = false;
+						phy_pass = status = false;
 					}
 					else if (get_debug()){
 							printf("ddr_training: full data training done (freq %dMHz) in block %d, PGSR0 status = 0x%08X\n",
@@ -3920,7 +3866,7 @@ int	ddr_training(void)
 							error("ddr_training: full data training found error bits set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
 							failed_block = block;
-							status = false;
+							phy_pass = status = false;
 
 					}
 					else if( ( sw_rdqs ) &&
@@ -3932,7 +3878,7 @@ int	ddr_training(void)
 								error("ddr_training: full data training found error bits set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 								current_ddr_params.clock_frequency, block, pgsr0.reg);
 								failed_block = block;
-								status = false;
+								phy_pass = status = false;
 
 					}
 					else{
@@ -3978,7 +3924,7 @@ int	ddr_training(void)
 				if (i == INDIRECT_RETRY_NUM) {
 					error("ddr_training: full data training timeout (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 							current_ddr_params.clock_frequency, block, pgsr0.reg);
-					status = false;
+					phy_pass = status = false;
 					print_fail_pub_dump(block);
 					return -EBUSY;
 				}
@@ -3987,13 +3933,13 @@ int	ddr_training(void)
 					error("ddr_training: full data training found done bits not set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 										current_ddr_params.clock_frequency, block, pgsr0.reg);
 					failed_block = block;
-					status = false;
+					phy_pass = status = false;
 				}
 				if (pgsr0.fields.qsgerr != 0) {
 					error("ddr_training: full data training found error bits set (freq %dMHz) in block %d, PGSR0 status = 0x%08X",
 											current_ddr_params.clock_frequency, block, pgsr0.reg);
 					failed_block = block;
-					status = false;
+					phy_pass = status = false;
 				}
 				if( g_ddr_htol_debug_verbose >= 2 ){
 					printf("\nRead second DQS results for PHY interface %d\n\n", block); // ddr_htol_debug_verbose 2
@@ -4010,6 +3956,8 @@ int	ddr_training(void)
 				}
 			}
 
+			if( !phy_pass )
+			   print_fail_pub_dump(block);
 		}
 		if ( sw_rdqs ) {
 			break;
@@ -5360,20 +5308,11 @@ int configure_emem(void)
 {
 	int status;
 	bool env_ddr_relax = false, cur_debug = false, sw_wl_norm = true;
-	char *env_relax, *env_ddr;
+	char *env_ddr;
 
-	env_ddr = getenv("ddr_dump_verbose");
-	if( env_ddr )
-		g_ddr_dump_verbose = simple_strtoul(env_ddr, NULL, 10);
-	env_ddr = getenv("ddr_htol_debug_verbose");
-	if( env_ddr )
-		g_ddr_htol_debug_verbose = simple_strtoul(env_ddr, NULL, 10);
-
-	printf( "### g_ddr_dump_verbose = %u  g_ddr_htol_debug_verbose = %u\n", g_ddr_dump_verbose, g_ddr_htol_debug_verbose );
-
-	env_relax = getenv("ddr_relax");
-	if(env_relax)
-		env_ddr_relax = (bool)simple_strtoul(env_relax, NULL, 10);
+	env_ddr = getenv("ddr_relax");
+	if(env_ddr)
+		env_ddr_relax = (bool)simple_strtoul(env_ddr, NULL, 10);
 
 	init_ddr_phy_record_DB();
 	get_ddr_parameters();
@@ -5416,11 +5355,13 @@ int configure_emem(void)
 		return -1;
 	}
 	if ( 1 ){ /* adding 1 sec delay to eliminate ddr errors after sw wl & dqs training */
-		printf( "### delay 1 sec after Phy initialization\n" );
+		if( g_ddr_htol_debug_verbose >= 2 )
+			printf( "### delay 1 sec after Phy initialization\n" );
 		mdelay( 1000 );
 	}
 	else{
-		printf( "### NO DELAY after Phy initialization\n" );
+		if( g_ddr_htol_debug_verbose >= 2 )
+			printf( "### NO DELAY after Phy initialization\n" );
 	}
 
 	if (!current_ddr_params.training_bypass) {
@@ -5462,6 +5403,7 @@ int configure_emem(void)
 	env_ddr = getenv("sw_write_leveling_nrml");
 	if( env_ddr )
 		sw_wl_norm = getenv_yesno("sw_write_leveling_nrml");
+	sw_wl_norm = sw_wl_norm && g_htol_sw_wa;
 	if( sw_wl_norm ){
 		status = sw_write_leveling_normalization( );
 		if( status ){
