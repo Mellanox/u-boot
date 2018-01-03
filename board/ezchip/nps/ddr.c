@@ -3302,7 +3302,7 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 
 				emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block],	PUB_PIR_REG_ADDR, 0x40200);
 				for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
-					udelay(1000);
+					udelay(1);
 					pgsr0.reg = emem_mc_indirect_reg_read_synop(
 									emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
 					if (pgsr0.fields.wldone == 1)
@@ -3348,7 +3348,7 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 					emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x40200);
 
 					for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
-						udelay(1000);
+						udelay(1);
 						pgsr0.reg = emem_mc_indirect_reg_read_synop(
 									emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
 						if (pgsr0.fields.wldone == 1)
@@ -3393,7 +3393,7 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 							emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x40200);
 
 							for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
-								udelay(1000);
+								udelay(1);
 								pgsr0.reg = emem_mc_indirect_reg_read_synop(
 											emem_mc_block_id[block], PUB_PGSR0_REG_ADDR);
 								if (pgsr0.fields.wldone == 1)
@@ -5374,7 +5374,7 @@ int configure_emem(void)
 		error("Phy initialization failed");
 		return -1;
 	}
-	if ( 0 ){ /* adding 1 sec delay to eliminate ddr errors after sw wl & dqs training */
+	if ( 1 ){ /* adding 1 sec delay to eliminate ddr errors after sw wl & dqs training */
 		if( g_ddr_htol_debug_verbose >= 2 )
 			printf( "### delay 1 sec after Phy initialization\n" );
 		mdelay( 1000 );
