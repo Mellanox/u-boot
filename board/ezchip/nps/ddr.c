@@ -2462,6 +2462,9 @@ static int dll_calibration_fail_recovery(u32 ifc)
 	pub_read_modify_write(ifc, PUB_PGCR1_REG_ADDR, pgcr1, pub_mode, 0);
 	udelay( 10 );
 
+	if( g_ddr_htol_debug_verbose >= 1 )
+		printf("==== dll_calibration_fail_recovery  ( Phy interface %d ) END ====\n", ifc); // ddr_htol_debug_verbose 1
+
 	return 0;
 }
 
@@ -2679,6 +2682,9 @@ static int sw_read_dqs_normalization(u32 block)
 		error("sw_read_dqs_normalization failed emem_mc block 0x%x", emem_mc_block_id[block] );
 		return -1;
 	}
+
+	if( g_ddr_htol_debug_verbose >= 1 )
+		printf("==== sw_read_dqs_normalization  ( Phy interface %d ) END ====    \n", block );// ddr_htol_debug_verbose 1
 
 	return 0;
 }
@@ -3047,7 +3053,7 @@ static int sw_read_dqs(u32 block)
 				pub_read_modify_write(block, PUB_DCURR_REG_ADDR, dcurr, dinst, 0x1);
 				udelay( 1 );
 				for (i = 0 ; i < INDIRECT_RETRY_NUM; i++) {
-					udelay(1000);
+					udelay(1);
 					dcusr0.reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DCUSR0_REG_ADDR);
 					if (dcusr0.fields.rdone == 1)
 						break;
@@ -3184,6 +3190,9 @@ static int sw_read_dqs(u32 block)
 	udelay(1);
 	pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x1);
 	udelay(1);
+
+	if( g_ddr_htol_debug_verbose >= 1 )
+		printf("==== sw_read_dqs  ( Phy interface %d ) END ====\n", block); // ddr_htol_debug_verbose 1
 
 	return 0;
 }
@@ -3489,6 +3498,10 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 		error(" At lease one byte in block %d reached the maximum value of wldly", block);
 		return -1;
 	}
+
+	if( g_ddr_htol_debug_verbose >= 1 )
+		printf("==== sw_write_leveling  ( Phy interface %d ) END ====    \n", block); // ddr_htol_debug_verbose 1
+
 	return 0;
 }
 
@@ -3565,6 +3578,9 @@ static int sw_write_leveling_normalization( void )
 			error("sw_write_leveling_normalization failed emem_mc block 0x%x", emem_mc_block_id[block] );
 			return -1;
 		}
+
+		if( g_ddr_htol_debug_verbose >= 1 )
+			printf("==== sw_write_leveling_normalization  ( Phy interface %d ) END ====    \n", block );// ddr_htol_debug_verbose 1
 	}
 
 	return 0;
@@ -3969,6 +3985,10 @@ int	ddr_training(void)
 		   print_fail_pub_dump(failed_block);
 		return -1;
 	}
+
+	if (get_debug())
+		printf("==== ddr_training END ====\n");
+
 
 	return 0;
 }
@@ -5354,13 +5374,13 @@ int configure_emem(void)
 		error("Phy initialization failed");
 		return -1;
 	}
-	if ( 1 ){ /* adding 1 sec delay to eliminate ddr errors after sw wl & dqs training */
+	if ( 0 ){ /* adding 1 sec delay to eliminate ddr errors after sw wl & dqs training */
 		if( g_ddr_htol_debug_verbose >= 2 )
 			printf( "### delay 1 sec after Phy initialization\n" );
 		mdelay( 1000 );
 	}
 	else{
-		if( g_ddr_htol_debug_verbose >= 2 )
+		//if( g_ddr_htol_debug_verbose >= 2 )
 			printf( "### NO DELAY after Phy initialization\n" );
 	}
 
