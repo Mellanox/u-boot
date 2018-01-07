@@ -2462,9 +2462,6 @@ static int dll_calibration_fail_recovery(u32 ifc)
 	pub_read_modify_write(ifc, PUB_PGCR1_REG_ADDR, pgcr1, pub_mode, 0);
 	udelay( 10 );
 
-	if( g_ddr_htol_debug_verbose >= 1 )
-		printf("==== dll_calibration_fail_recovery  ( Phy interface %d ) END ====\n", ifc); // ddr_htol_debug_verbose 1
-
 	return 0;
 }
 
@@ -2624,8 +2621,8 @@ static int sw_read_dqs_normalization(u32 block)
 		}
 
 		/* 10 */
-		if( ! ( byte_dgsl == 0 && byte_dqsgd < byte_iprd ) ){
-			if( byte_dqsgd < byte_iprd ){
+		if( ! ( byte_dgsl == 0 && byte_dqsgd <= byte_iprd ) ){
+			if( byte_dqsgd <= byte_iprd ){
 				/* 10 */
 				byte_dgsl = byte_dgsl - 1;
 				byte_dqsgd = byte_dqsgd + byte_iprd;
@@ -2664,13 +2661,13 @@ static int sw_read_dqs_normalization(u32 block)
 			printf( " ifc = %d byte = %d dqs_norm : post-value DXnLCDLR2 byte_dqsgd %u\n", block, bl_index, byte_dqsgd );
 
 			reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0BDLR3_REG_ADDR + (bl_index*0x40));
-			printf( " ifc = %d byte = %d dqs_norm : post-value DXnBDLR3 byte_dgsl %u\n", block, bl_index, reg );
+			printf( " ifc = %d byte = %d dqs_norm : post-value DXnBDLR3 byte_dgsl 0x%x\n", block, bl_index, reg );
 
 			reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0BDLR4_REG_ADDR + (bl_index*0x40));
-			printf( " ifc = %d byte = %d dqs_norm : post-value DXnBDLR4 byte_dgsl %u\n", block, bl_index, reg );
+			printf( " ifc = %d byte = %d dqs_norm : post-value DXnBDLR4 byte_dgsl 0x%x\n", block, bl_index, reg );
 
 			reg = emem_mc_indirect_reg_read_synop(emem_mc_block_id[block], PUB_DX0BDLR5_REG_ADDR + (bl_index*0x40));
-			printf( " ifc = %d byte = %d dqs_norm : post-value DXnBDLR5 byte_dgsl %u\n", block, bl_index, reg );
+			printf( " ifc = %d byte = %d dqs_norm : post-value DXnBDLR5 byte_dgsl 0x%x\n", block, bl_index, reg );
 		}
 	}
 
@@ -2682,9 +2679,6 @@ static int sw_read_dqs_normalization(u32 block)
 		error("sw_read_dqs_normalization failed emem_mc block 0x%x", emem_mc_block_id[block] );
 		return -1;
 	}
-
-	if( g_ddr_htol_debug_verbose >= 1 )
-		printf("==== sw_read_dqs_normalization  ( Phy interface %d ) END ====    \n", block );// ddr_htol_debug_verbose 1
 
 	return 0;
 }
@@ -2942,7 +2936,7 @@ static int sw_read_dqs(u32 block)
 	u32 byte_first_pass, byte_last_pass, repeat_count, dqsg_byte;
 	u32 mr_data_0, mr_data_1;
 	bool error_msg = false, set_qsgerr = false, dqs_fail = false;;
-	bool inloop_dxterm = false; /* false for now, lower failure probability */
+	bool inloop_dxterm = true; /* official according to synps reply on 2.1.2018. applyed 4.1.18  */
 	bool trial_1_17_12 = true;	/* official update */
 
 	if( g_ddr_htol_debug_verbose >= 1 )
@@ -3191,9 +3185,6 @@ static int sw_read_dqs(u32 block)
 	pub_read_modify_write(block, PUB_PGCR0_REG_ADDR, pgcr0, phyfrst, 0x1);
 	udelay(1);
 
-	if( g_ddr_htol_debug_verbose >= 1 )
-		printf("==== sw_read_dqs  ( Phy interface %d ) END ====\n", block); // ddr_htol_debug_verbose 1
-
 	return 0;
 }
 
@@ -3284,13 +3275,13 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 			}
 
 			/* write leveling search step 10 */
-			for ( wldly = 0; wldly < 0x1FF; wldly+=wl_step) {
+			for ( wldly = wcal_offset ; wldly < 0x1FF; wldly+=wl_step) {
 				dx_x_lcdlr0[wl_byte].reg  = emem_mc_read_indirect_reg(emem_mc_block_id[block],
 									PUB_DX0LCDLR0_REG_ADDR + addr_offset, 0x100, g_EZsim_mode);
 				if( g_ddr_htol_debug_verbose >= 3 )
 					printf( " ifc = %d byte = %d Step 10.a : pre-write LCDLR0.WLD = 0x%x \n", block, wl_byte, dx_x_lcdlr0[wl_byte].fields.wld );
 				if( change_oded_1_21_12 ){
-					dx_x_lcdlr0[wl_byte].fields.wld = wldly + wcal_offset;
+					dx_x_lcdlr0[wl_byte].fields.wld = wldly;
 					if( g_ddr_htol_debug_verbose >= 3 )
 						printf( " ifc = %d byte = %d Step 10.b : wldly = %u LCDLR0.wld = %u \n", block, wl_byte, wldly, dx_x_lcdlr0[wl_byte].fields.wld );
 				}
@@ -3388,6 +3379,9 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 						dx_x_lcdlr0[wl_byte].fields.wld = wldly;
 						emem_mc_write_indirect_reg(emem_mc_block_id[block], PUB_DX0LCDLR0_REG_ADDR + (wl_byte * 0x40),
 													 1, dx_x_lcdlr0[wl_byte].reg, 0, 0x101);
+						if( g_ddr_htol_debug_verbose >= 4 )
+							printf( " ifc = %d byte = %d write leveling trial_oded_1_27_12 : wldly = %u\n", block, wl_byte, wldly ); // ddr_htol_debug_verbose 3
+
 
 						for( continuity=0;continuity<10;continuity++ ){
 							emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[block], PUB_PIR_REG_ADDR, 0x40200);
@@ -3408,11 +3402,13 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 							dx_x_gsr0[wl_byte].reg = emem_mc_indirect_reg_read_synop(
 									emem_mc_block_id[block], PUB_DX0GSR0_REG_ADDR + (wl_byte * 0x40));
 							byte_dq = dx_x_gsr0[wl_byte].fields.wldq;
+							if( g_ddr_htol_debug_verbose >= 4 )
+								printf( " ifc = %d byte = %d write leveling trial_oded_1_27_12 : wldly = %u byte_dq = %u continuity = %u\n", block, wl_byte, wldly, byte_dq, continuity );
 							if( byte_dq == 0 ){
 								break;
 							}
-							wldly--;
 						}
+						wldly--;
 						if( byte_dq == 0 ){
 							break;
 						}
@@ -3422,6 +3418,7 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 
 				/* Step 13 */
 				if ( byte_validated == 1) {
+					byte_wldly -= wcal_offset;
 
 					if( wr_lvl_change_1_1_a_20_12 ){ /* resolving non zero value on rank 0 bytes 2-3 */
 						pub_dual_read_modify_write(block, PUB_RANKIDR_REG_ADDR, rankidr, rankrid, 0, rankwid, 0);
@@ -3498,10 +3495,6 @@ static int sw_write_leveling(u32 block, u32 wl_mr1_data)
 		error(" At lease one byte in block %d reached the maximum value of wldly", block);
 		return -1;
 	}
-
-	if( g_ddr_htol_debug_verbose >= 1 )
-		printf("==== sw_write_leveling  ( Phy interface %d ) END ====    \n", block); // ddr_htol_debug_verbose 1
-
 	return 0;
 }
 
@@ -3545,11 +3538,10 @@ static int sw_write_leveling_normalization( void )
 				printf( " ifc = %d byte = %d wl_norm : pre-value DXnLCDLR0 byte_wld %u\n", block, bl_index, byte_wld );
 			}
 			/* 8 */
-			if( ( byte_wlsl == 0          ) &&
-				( byte_wld  >=  byte_iprd  )    ){
+			if( ( byte_wld  >  byte_iprd  ) ){
 				continue;
 			}
-			else if ( byte_wlsl  > 0 ){
+			if ( byte_wlsl  > 0 ){
 				/* 10 */
 				byte_wlsl = byte_wlsl - 1;
 				byte_wld = byte_wld + byte_iprd;
@@ -3578,9 +3570,6 @@ static int sw_write_leveling_normalization( void )
 			error("sw_write_leveling_normalization failed emem_mc block 0x%x", emem_mc_block_id[block] );
 			return -1;
 		}
-
-		if( g_ddr_htol_debug_verbose >= 1 )
-			printf("==== sw_write_leveling_normalization  ( Phy interface %d ) END ====    \n", block );// ddr_htol_debug_verbose 1
 	}
 
 	return 0;
@@ -3985,10 +3974,6 @@ int	ddr_training(void)
 		   print_fail_pub_dump(failed_block);
 		return -1;
 	}
-
-	if (get_debug())
-		printf("==== ddr_training END ====\n");
-
 
 	return 0;
 }
@@ -5374,13 +5359,13 @@ int configure_emem(void)
 		error("Phy initialization failed");
 		return -1;
 	}
-	if ( 1 ){ /* adding 1 sec delay to eliminate ddr errors after sw wl & dqs training */
+	if ( 0 ){ /* adding 1 sec delay to eliminate ddr errors after sw wl & dqs training */
 		if( g_ddr_htol_debug_verbose >= 2 )
 			printf( "### delay 1 sec after Phy initialization\n" );
 		mdelay( 1000 );
 	}
 	else{
-		//if( g_ddr_htol_debug_verbose >= 2 )
+		if( g_ddr_htol_debug_verbose >= 2 )
 			printf( "### NO DELAY after Phy initialization\n" );
 	}
 
