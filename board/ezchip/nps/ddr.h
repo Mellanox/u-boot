@@ -1796,6 +1796,17 @@ union pub_pgsr0 {
 	} fields;
 };
 
+union pub_pgsr1 {
+	u32 reg;
+	struct {
+		u32 parerr:1;
+		u32 vtsop:1;
+		u32 reserved_25_29:5;
+		u32 dltcode:24;
+		u32 dltdone:1;
+	} fields;
+};
+
 union pub_acbdlr0 {
 	u32	reg;
 	struct {
