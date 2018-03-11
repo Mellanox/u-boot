@@ -2177,7 +2177,9 @@ int phy_init(void);
 void set_pir_val(u32 pir_val);
 #ifndef CONFIG_NPS_DDR_DEBUG
 #define init_ddr_phy_record_DB()
+#define print_pub_dump(block_idx)
 #else
+extern void print_pub_dump(u32 block_idx);
 extern void init_ddr_phy_record_DB(void);
 int do_sw_wl(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int do_calib_fail_recovery(cmd_tbl_t *cmdtp, int flag, int argc,
