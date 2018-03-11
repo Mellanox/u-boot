@@ -2324,7 +2324,7 @@ static int dll_calibration_fail_recovery(u32 ifc)
 
 	union pub_pgsr0 pgsr0;
 	int index, half_ui;
-	u32 res_acmdlr, res_dxmdlr[4];
+	u32 res_acmdlr, tap_delay, ac_wl_delay, res_dxmdlr[4];
 
 	bool dll_rec_change_0_3_19_12_2017 = true; /* updated base for 19.12.2017 */
 
@@ -2400,7 +2400,7 @@ static int dll_calibration_fail_recovery(u32 ifc)
 						dx_x_mdlr0[index].fields.iprd, g_dx_x_mdlr0[ifc][index].fields.iprd, ifc, index );
 		}
 
-		half_ui = DIV_ROUND_UP( res_dxmdlr[index], 2 );
+		half_ui = DIV_ROUND_UP( res_dxmdlr[index], 2 ); /* step 25 */
 
 
 		if( dll_rec_change_0_3_19_12_2017 ){
@@ -2480,6 +2480,15 @@ static int dll_calibration_fail_recovery(u32 ifc)
 			emem_mc_indirect_reg_write_synop_data0(emem_mc_block_id[ifc], PUB_DX0LCDLR5_REG_ADDR + (index*0x40), dx_x_lcdlr5[index].reg);
 		}
 	}
+
+	/* step 37 */
+	tap_delay = tCK2[ current_ddr_params.pll_freq ] /  ( 2 * res_acmdlr );
+	ac_wl_delay = DIV_ROUND_CLOSEST( 110, tap_delay );
+	pub_read_modify_write(ifc, PUB_ACLCDLR_REG_ADDR, aclcdlr, acd, ac_wl_delay);
+	pub_dual_read_modify_write(ifc, PUB_ACBDLR0_REG_ADDR, acbdlr0, ck0bd, ac_wl_delay, ck1bd, ac_wl_delay);
+	pub_dual_read_modify_write(ifc, PUB_ACBDLR3_REG_ADDR, acbdlr3, cs0bd, ac_wl_delay, cs1bd, ac_wl_delay);
+	pub_dual_read_modify_write(ifc, PUB_ACBDLR5_REG_ADDR, acbdlr5, cke0bd, ac_wl_delay, cke1bd, ac_wl_delay);
+
 
 	/* change according to app note 1.1 12.1.2018 */
 	pub_read_modify_write(ifc, PUB_PGCR1_REG_ADDR, pgcr1, mdlen, 0x1);
@@ -4344,12 +4353,12 @@ static int phy_ck_setup(void)
 		tap_delay = tCK2[tck_index] / (2 * acmdlr0.fields.iprd);
 		acbdlr0.reg = 0;
 		if (current_ddr_params.clk[ifc].ck_0 >= 15) {
-			acbdlr0.fields.ck0bd = DIV_ROUND_CLOSEST(
+			acbdlr0.fields.ck0bd += DIV_ROUND_CLOSEST(
 				(current_ddr_params.clk[ifc].ck_0 * 1000), tap_delay);
 			update = true;
 		}
 		if (current_ddr_params.clk[ifc].ck_1 >= 15) {
-			acbdlr0.fields.ck1bd = DIV_ROUND_CLOSEST(
+			acbdlr0.fields.ck1bd += DIV_ROUND_CLOSEST(
 				(current_ddr_params.clk[ifc].ck_1 * 1000), tap_delay);
 			update = true;
 		}

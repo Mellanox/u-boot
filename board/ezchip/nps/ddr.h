@@ -297,6 +297,8 @@
 #define PUB_BISTWCSR_REG_ADDR		0x114
 #define PUB_RANKIDR_REG_ADDR		0x137
 #define PUB_ACBDLR0_REG_ADDR		0x150
+#define PUB_ACBDLR3_REG_ADDR		0x153
+#define PUB_ACBDLR5_REG_ADDR		0x155
 #define PUB_ACLCDLR_REG_ADDR		0x160
 #define PUB_ACMDLR0_REG_ADDR		0x168
 #define PUB_ACMDLR1_REG_ADDR		0x169
@@ -1818,6 +1820,42 @@ union pub_acbdlr0 {
 		u32 ck1bd:6;
 		u32 reserved6_7:2;
 		u32 ck0bd:6;
+	} fields;
+};
+
+union pub_acbdlr3 {
+	u32	reg;
+	struct {
+		u32 reserved30_31:2;
+		u32 cs3bd:6;
+		u32 reserved22_23:2;
+		u32 cs2bd:6;
+		u32 reserved14_15:2;
+		u32 cs1bd:6;
+		u32 reserved6_7:2;
+		u32 cs0bd:6;
+	} fields;
+};
+
+union pub_acbdlr5 {
+	u32	reg;
+	struct {
+		u32 reserved30_31:2;
+		u32 cke3bd:6;
+		u32 reserved22_23:2;
+		u32 cke2bd:6;
+		u32 reserved14_15:2;
+		u32 cke1bd:6;
+		u32 reserved6_7:2;
+		u32 cke0bd:6;
+	} fields;
+};
+
+union pub_aclcdlr{
+	u32	reg;
+	struct {
+		u32 reserved9_31:23;
+		u32 acd:9;
 	} fields;
 };
 
