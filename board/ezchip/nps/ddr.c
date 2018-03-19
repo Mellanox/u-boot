@@ -35,7 +35,9 @@
 #include <linux/errno.h>
 #include "common.h"
 #include "ddr.h"
+#ifdef CONFIG_NPS_DDR_DEBUG
 #include "ddr_debug.h"
+#endif
 #include "nps.h"
 #include "chip.h"
 #include "bist.h"

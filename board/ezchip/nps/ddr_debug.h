@@ -74,7 +74,7 @@ int do_configure_emem(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #endif
 int do_ddr_training_steps(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 int do_get_ddr_freq(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
-void init_ddr_phy_record_DB(void);
+void init_ddr_phy_record_DB();
 int parse_UM_port_format(char * const UMstr, u32 *pside, u32 *pnum);
 void print_pub_dump(u32 block_idx);
 int ddr_int_loop(void);
